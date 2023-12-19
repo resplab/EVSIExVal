@@ -66,6 +66,9 @@ ui <- fluidPage(
                textOutput("infer_lambda_desc")
       ),
       tabPanel("Model performance",
+        HTML("Here we solicit your assessment of the model performance and your uncertainty around this asessment. 
+             Currently, this is based on trivariate specification (prevalence, sensitivity, and specificity, with Beta distribution for modeling uncertainty for each component. In the future, other methods of uncertainty assessment will be added"),
+        hr(),
         fluidRow(
           column(4,sliderInput("prev",label="Prevalence (%)", min=0, max=100, step=0.1, value=evidence$prev[1]/sum(evidence$prev)*100, width="100%")),
           column(4,numericInput("prev_n",label="Your estimate of prevalence is based on how many observations?", value=sum(evidence$prev))),
