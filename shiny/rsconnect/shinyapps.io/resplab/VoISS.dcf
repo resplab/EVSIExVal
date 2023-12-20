@@ -5,7 +5,7 @@ account: resplab
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 10829358
-bundleId: 8068000
+bundleId: 8070002
 url: https://resplab.shinyapps.io/VoISS/
 version: 1
 asMultiple: FALSE

@@ -17,10 +17,10 @@ evidence <- list(prev = c(43L, 457L), sn = c(41L, 2L), sp = c(147, 310))
 ui <- fluidPage(
   
     # Application title
-    titlePanel("ENBS calculator (CONFIDENTIAL)"),
+    titlePanel("ENBS calculator (CONFIDENTIAL - please do not share the link)"),
     tabsetPanel(id="input_tabset",
       tabPanel("Introduction",HTML("
-               <H3><B>Welcome to the Expected Net Benefit of Sampling (ENBS) calculator</B></H3><BR/>
+               <H3><B>Welcome to the Expected Net Benefit of Sampling (ENBS) calculator for external validation studies of risk prediction models</B></H3><BR/>
                <P>This Web app helps you determine the optimal sample size for the external validation of your risk prediction model based on uncertainty around its net benefit (NB).</P>
                <P><B>To use this app, you need the following categories of information: </B><BR/>
                   1. Two 'exchange rates': one is the exchange rate between true and false positives, implied by the risk threshold, and another one between the sampling efforts and clinical benefit.<BR/>
@@ -201,6 +201,7 @@ server <- function(input, output)
                                                       )),
       renderPlot({
         plot(n_stars, EVSIs, type='l', xlab="Sample size of the future study", ylab="EVSI")
+        title("Expected Value of Sample Information (in true positive units)")
         y2 <- pretty(c(0,N*EVPI))
         axis(4, at=y2/N, labels=y2)
         mtext("Population EVSI", side = 4)
@@ -208,7 +209,8 @@ server <- function(input, output)
       }),
     
       renderPlot({
-        plot(n_stars, ENBS, type='l', xlab="Sample size of the future study", ylab="Expected Net Benefit of Sampling")
+        plot(n_stars, ENBS, type='l', xlab="Sample size of the future study", ylab="ENBS")
+        title("Expected Net benefit of Sampling (in true positive units)")
         winner <- which.max(ENBS)
         if(winner!=1 & winner!=length(ENBS))
         {
