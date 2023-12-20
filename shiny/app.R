@@ -48,7 +48,7 @@ ui <- fluidPage(
                   </P>
                   
                   <P>ENBS can be used to determine the optimal sample size from a decision-theoretic perspective.</P>
-                  <P>The nominal value of ENBS, which is in true positive units by default, can also be used to judge whether the external vlaidation study of a given sample size is worth taking</P>
+                  <P>The nominal value of ENBS, which is in true positive units by default, can also be used to judge whether the external validation study of a given sample size is worth taking</P>
       ")),
       tabPanel("Exchange rates",
                fluidRow(
@@ -67,7 +67,7 @@ ui <- fluidPage(
       ),
       tabPanel("Model performance",
         HTML("Here we solicit your assessment of the model performance and your uncertainty around this asessment. 
-             Currently, this is based on trivariate specification (prevalence, sensitivity, and specificity, with Beta distribution for modeling uncertainty for each component. In the future, other methods of uncertainty assessment will be added"),
+             Currently, this is based on trivariate specification (prevalence, sensitivity, and specificity), with Beta distribution for modeling uncertainty for each component. In the future, other methods of uncertainty assessment will be added"),
         hr(),
         fluidRow(
           column(4,sliderInput("prev",label="Prevalence (%)", min=0, max=100, step=0.1, value=evidence$prev[1]/sum(evidence$prev)*100, width="100%")),
@@ -143,27 +143,28 @@ server <- function(input, output)
   
   observeEvent(input$z, {
     z <- input$z/100
-    output$z_desc <- renderText(paste("The risk threshold is the threshold on predicted risk at whhich point the care provider / patient is iundifferent between using or not using the tool.\n
-          A risk threhsold of",input$z, "indicates that the benefit of a true positive case is equal (in the opposite direction) to the harm of",(1-z)/z,"false positive cases."))
+    output$z_desc <- renderText(paste0("The risk threshold is the threshold on predicted risk at which point the care provider / patient is indifferent between using or not using the tool.\n
+          A risk threhsold of ",input$z, "% indicates that the benefit of a true positive case is equal (in the opposite direction) to the harm of ",(1-z)/z," false positive cases."))
   })
   
   observeEvent(input$lambda, {
     output$lambda_desc <- renderText(paste("The Number Needed to Study (NNS) represents the trade-off between sampling efforts and clinical utility. For example, a NNS of 100 means the investigator believes the efforts required to procure 100 more samples is equal to the benefit of one true positive diagnosis.\n
-          To choose this value, think of the context: How important the clinical event is? For example, for a catstrophic event like a stroke, one might justify procuring a sample in hundreds, or thoushands, to prevent one more stroke.\n
-          This is also related to the ease by which samples can be obtained. Will this external validation study be based on primary or secondary data collection? The former might require significantly more efforts.
+          To choose this value, think of the context: How important the clinical event is? For example, for a catstrophic event like a stroke, one might justify procuring a sample in hundreds, or thoushands, to prevent one more event\n
+          This is also related to the ease by which samples can be obtained. Will this external validation study be based on primary or secondary data collection? The former might require significantly more efforts. \n
+          In thinking about sampling efforts, do not consider one-time costs and efforts required for conducting a validaiton study. Those one-time costs are not affected by sample size. Instead, think of  'incremental effort of procuring samples.
           "))
   })
   
   observeEvent(input$infer_lambda, {
     z <- input$z/100
     updateSliderInput(inputId="lambda", value=max(1, (1-z)/(z)))
-    output$infer_lambda_desc <- renderText(paste("The inferred minimum NNS is based on the notion that in most contexts, it is justifiable to obtain one more observation insofar as that one extra observation is expected to prevent one incorrect medical decision.\n 
+    output$infer_lambda_desc <- renderText(paste("The inferred minimum NNS is based on the notion that in most contexts, it is justifiable to obtain one more observation insofar as that observation is expected to prevent one incorrect medical decision.\n 
                                                  Incorrect decisions can be in terms of not detecting an individual who will experience the event (missinge a true positive), or unncecesarily treating an individuals who will not experience the event (causing a false positive).\n"
                                                  ,ifelse(z<0.5, 
-                                                    paste("Because at risk threshold of", z, "each true positive detection is equal to", (1-z)/z, " false positives, and because the EVSI is in true positive units, the desired NNS should be at least", (1-z)/z,"."),
+                                                    paste0("Because at risk threshold of ", input$z, "% each true positive detection is equal to", (1-z)/z, " false positives, and because the EVSI is in true positive units, the desired NNS should be at least", (1-z)/z,"."),
                                                     ""
                                                     ),
-                                                  "In general, this approach results in NNS of max(1,(1-z)/z) where z is the clinical threshold."))
+                                                  "In general, this reasoning results in NNS of max(1,(1-z)/z) where z is the clinical threshold."))
   })
   
   observeEvent(input$clear_results, {
@@ -179,6 +180,7 @@ server <- function(input, output)
     n_stars <- c(0,as.integer(round(exp(seq(from=log(input$n_min), to=log(input$n_max), by=log(input$n_step))))))
     VoI <- EVSI_ag(evidence, z, n_sim=n_sim, future_sample_sizes=n_stars[-1])
     EVPI <- VoI$EVPI
+    p_best <- VoI$p_best
     EVSIs <- c(0,VoI$EVSI)
     lambda <- input$lambda
     N <- input$N
@@ -187,6 +189,9 @@ server <- function(input, output)
     require("knitr")
     output$results <- renderUI(list(
       renderText(paste("EVPI=",EVPI)),
+      hr(),
+      renderTable(p_best),
+      renderText(ifelse(max(p_best$p_best)>0.999, "IMPORTANT: in more than 99.9% of simulations on strategy is the best","No")),
       hr(),
       renderTable((data.frame("sample size"=as.integer(n_stars),
                                                       "EVSI"=format(EVSIs, nsmall=5),

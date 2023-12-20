@@ -350,6 +350,9 @@ EVSI_ag <- function(evidence=list(prev=c(1,1), sn=c(1,1), sp=c(1,1)), z, future_
                     pop_data$prev*pop_data$sn-(1-pop_data$prev)*(1-pop_data$sp)*z/(1-z),
                     pop_data$prev-(1-pop_data$prev)*z/(1-z)
   )
+  p_best <- as.data.frame(table(apply(true_NBs,1,which.max))/nrow(true_NBs))
+  colnames(p_best)  <- c("Decision", "p_best")
+  levels(p_best$Decision) <- c("1"="Treat none", "2"="Use Model", "3"="treat All") 
   
   EVPI <- mean(apply(true_NBs,1,max)) - max(cur_NBs)
   
@@ -397,7 +400,7 @@ EVSI_ag <- function(evidence=list(prev=c(1,1), sn=c(1,1), sp=c(1,1)), z, future_
   }
   else EVSI=NULL
   
-  list(EVPI=EVPI, EVSI=EVSI)
+  list(EVPI=EVPI, EVSI=EVSI, p_best=p_best)
 }
 
 
