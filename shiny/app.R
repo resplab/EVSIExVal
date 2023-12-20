@@ -17,7 +17,7 @@ evidence <- list(prev = c(43L, 457L), sn = c(41L, 2L), sp = c(147, 310))
 ui <- fluidPage(
   
     # Application title
-    titlePanel("ENBS calculator"),
+    titlePanel("ENBS calculator (CONFIDENTIAL)"),
     tabsetPanel(id="input_tabset",
       tabPanel("Introduction",HTML("
                <H3><B>Welcome to the Expected Net Benefit of Sampling (ENBS) calculator</B></H3><BR/>
@@ -95,7 +95,7 @@ ui <- fluidPage(
       tabPanel("Analysis setup",
         numericInput("n_min","Starting sample size", value=500),
         numericInput("n_max","Ending sample size", value=16000),
-        sliderInput("n_step", "Sample size multiplier at each step", value=2, min=1, max=10, step=0.25),
+        sliderInput("n_step", "Sample size multiplier at each step", value=2, min=1.25, max=10, step=0.25),
         numericInput("n_sim", "Number of simulations", min=100, max=10^67, value=10^5)
       ),
       tabPanel("Results",
@@ -188,15 +188,17 @@ server <- function(input, output)
     
     require("knitr")
     output$results <- renderUI(list(
-      renderText(paste("EVPI=",EVPI)),
+      renderText(paste("EVPI=",format(EVPI, nsmall=5))),
+      renderText(paste("Population EVPI=",format(EVPI*N, nsmall=2))),
       hr(),
       renderTable(p_best),
-      HTML(ifelse(max(p_best$p_best)>0.99, "<B style='color:red; font-weight:bold;'>In more than 99% of simulations the same stratgy had the same NB. This indicates there is not much uncertainty around this decision. VoI analysis might not be informative and might be degenrate.</B>","")),
+      HTML(ifelse(max(p_best$p_best)>0.99, "<B style='color:red; font-weight:bold;'>In more than 99% of simulations the same stratgy had the same NB. This indicates there is not much uncertainty around this decision. VoI analysis might be degenrate and non-informative.</B>","")),
       hr(),
-      renderTable((data.frame("sample size"=as.integer(n_stars),
+      renderTable(data.frame("sample size"=as.integer(n_stars),
                                                       "EVSI"=format(EVSIs, nsmall=5),
                                                       "Population EVSI"=as.double(EVSIs*N),
-                                                    "ENBS"=as.double(ENBS)))),
+                                                      "ENBS"=as.double(ENBS)
+                                                      )),
       renderPlot({
         plot(n_stars, EVSIs, type='l', xlab="Sample size of the future study", ylab="EVSI")
         y2 <- pretty(c(0,N*EVPI))
