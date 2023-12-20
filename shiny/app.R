@@ -191,7 +191,7 @@ server <- function(input, output)
       renderText(paste("EVPI=",EVPI)),
       hr(),
       renderTable(p_best),
-      renderText(ifelse(max(p_best$p_best)>0.999, "IMPORTANT: in more than 99.9% of simulations on strategy is the best","No")),
+      HTML(ifelse(max(p_best$p_best)>0.99, "<B style='color:red; font-weight:bold;'>In more than 99% of simulations the same stratgy had the same NB. This indicates there is not much uncertainty around this decision. VoI analysis might not be informative and might be degenrate.</B>","")),
       hr(),
       renderTable((data.frame("sample size"=as.integer(n_stars),
                                                       "EVSI"=format(EVSIs, nsmall=5),
