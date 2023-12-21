@@ -15,7 +15,6 @@ evidence <- list(prev = c(43L, 457L), sn = c(41L, 2L), sp = c(147, 310))
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
-  
     # Application title
     titlePanel("ENBS calculator (CONFIDENTIAL - please do not share the link)"),
     tabsetPanel(id="input_tabset",
@@ -25,7 +24,7 @@ ui <- fluidPage(
                <P><B>To use this app, you need the following categories of information: </B><BR/>
                   1. Two 'exchange rates': one is the exchange rate between true and false positives, implied by the risk threshold, and another one between the sampling efforts and clinical benefit.<BR/>
                     
-                  2. The performance of the test in terms of its sensitivity and specificity (alongside outcome prevalence) at the risk threshold of interest.<BR/>
+                  2. The performance of the model in terms of its sensitivity and specificity at the risk threshold of interest (alongside outcome prevalence).<BR/>
                   
                   3. An estimate of the total expected usage of the model for decision making in the target population.<BR/>
                   
@@ -49,6 +48,8 @@ ui <- fluidPage(
                   
                   <P>ENBS can be used to determine the optimal sample size from a decision-theoretic perspective.</P>
                   <P>The nominal value of ENBS, which is in true positive units by default, can also be used to judge whether the external validation study of a given sample size is worth taking</P>
+                  <HR/>
+                  <DIV style='display: flex;	 align-items: flex-end;  align-text: center'>App version 2023.12.20. For questions and bug reports contact msafavi@mail.ubc.ca</DIV>
       ")),
       tabPanel("Exchange rates",
                fluidRow(
@@ -67,20 +68,20 @@ ui <- fluidPage(
       ),
       tabPanel("Model performance",
         HTML("Here we solicit your assessment of the model performance and your uncertainty around this asessment. 
-             Currently, this is based on trivariate specification (prevalence, sensitivity, and specificity), with Beta distribution for modeling uncertainty for each component. In the future, other methods of uncertainty assessment will be added"),
+             Currently, this is based on trivariate specification (outcome prevalence, sensitivity, and specificity), with Beta distribution for modeling uncertainty for each component. In the future, other methods of uncertainty assessment will be added"),
         hr(),
         fluidRow(
-          column(4,sliderInput("prev",label="Prevalence (%)", min=0, max=100, step=0.1, value=evidence$prev[1]/sum(evidence$prev)*100, width="100%")),
-          column(4,numericInput("prev_n",label="Your estimate of prevalence is based on how many observations?", value=sum(evidence$prev))),
+          column(4,sliderInput("prev",label="Average outcome risk (outcome prevalence) (%)", min=0, max=100, step=0.1, value=evidence$prev[1]/sum(evidence$prev)*100, width="100%")),
+          column(4,numericInput("prev_n",label="Your estimate of the average risk of the clinical outcome is based on how many observations?", value=sum(evidence$prev))),
           column(4, textOutput("prev_dist"))
         ),hr(),
         fluidRow(
-          column(4,sliderInput("sn",label="Sensitivity (%)", min=0, max=100, step=0.1, value=evidence$sn[1]/sum(evidence$sn)*100, width="100%")),
+          column(4,sliderInput("sn",label="Sensitivity of the model at the chosen risk threshold (%)", min=0, max=100, step=0.1, value=evidence$sn[1]/sum(evidence$sn)*100, width="100%")),
           column(4,numericInput("sn_n",label="Your estimate of sensitivity is based on how many observations?", value=sum(evidence$sn))),
           column(4, textOutput("sn_dist"))
         ),hr(),
         fluidRow(
-          column(4,sliderInput("sp",label="Specificity (%)", min=0, max=100, step=0.1, value=evidence$sp[1]/sum(evidence$sp)*100, width="100%")),
+          column(4,sliderInput("sp",label="Specificity the model at the chosen risk threshold (%)", min=0, max=100, step=0.1, value=evidence$sp[1]/sum(evidence$sp)*100, width="100%")),
           column(4,numericInput("sp_n",label="Your estimate of sensitivity is based on how many observations?", value=sum(evidence$sp))),
           column(4, textOutput("sp_dist"))
         )
@@ -102,7 +103,7 @@ ui <- fluidPage(
         actionButton("run", "Run"), actionButton("clear_results", "Clear results"),
         uiOutput("results")
       )
-    )
+    ),
 )
 
 
@@ -143,15 +144,15 @@ server <- function(input, output)
   
   observeEvent(input$z, {
     z <- input$z/100
-    output$z_desc <- renderText(paste0("The risk threshold is the threshold on predicted risk at which point the care provider / patient is indifferent between using or not using the tool.\n
+    output$z_desc <- renderText(paste0("The risk threshold is the threshold on predicted risk at which point the care provider / patient is indifferent between treatment or no treatment.\n
           A risk threhsold of ",input$z, "% indicates that the benefit of a true positive case is equal (in the opposite direction) to the harm of ",(1-z)/z," false positive cases."))
   })
   
   observeEvent(input$lambda, {
     output$lambda_desc <- renderText(paste("The Number Needed to Study (NNS) represents the trade-off between sampling efforts and clinical utility. For example, a NNS of 100 means the investigator believes the efforts required to procure 100 more samples is equal to the benefit of one true positive diagnosis.\n
           To choose this value, think of the context: How important the clinical event is? For example, for a catstrophic event like a stroke, one might justify procuring a sample in hundreds, or thoushands, to prevent one more event\n
-          This is also related to the ease by which samples can be obtained. Will this external validation study be based on primary or secondary data collection? The former might require significantly more efforts. \n
-          In thinking about sampling efforts, do not consider one-time costs and efforts required for conducting a validaiton study. Those one-time costs are not affected by sample size. Instead, think of  'incremental effort of procuring samples.
+          This is also related to the ease at which samples can be obtained. Will this external validation study be based on primary or secondary data collection? The former might require significantly more efforts. \n
+          In thinking about sampling efforts, do not consider one-time costs and efforts required for setting up a validaiton study. Those one-time costs are not affected by sample size. Instead, think of  'incremental' effort of procuring samples.
           "))
   })
   
@@ -192,7 +193,7 @@ server <- function(input, output)
       renderText(paste("Population EVPI=",format(EVPI*N, nsmall=2))),
       hr(),
       renderTable(p_best),
-      HTML(ifelse(max(p_best$p_best)>0.99, "<B style='color:red; font-weight:bold;'>In more than 99% of simulations the same stratgy had the same NB. This indicates there is not much uncertainty around this decision. VoI analysis might be degenrate and non-informative.</B>","")),
+      HTML(ifelse(max(p_best$p_best)>0.99, "<B style='color:red; font-weight:bold;'>In more than 99% of simulations the same stratgy had the highest NB. This indicates there is not much uncertainty around this decision. VoI analysis might be degenrate and non-informative.</B>","")),
       hr(),
       renderTable(data.frame("sample size"=as.integer(n_stars),
                                                       "EVSI"=format(EVSIs, nsmall=5),
