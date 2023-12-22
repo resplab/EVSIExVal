@@ -1,4 +1,3 @@
-#### EVSI by sample size
 setwd("C:/Users/msafavi/static/GitRepos/EVSIExVal")
 
 source("include.R")
@@ -12,7 +11,8 @@ settings <- list(
   zs=c(0.01,0.02)
 )
 
-out <- list()
+out <- list() 
+#out <- readRDS(paste0(settings$output_dir,"gusto_sim.RDS"))
 
 library(doParallel)
 library(parallel)
@@ -85,7 +85,8 @@ lines(c(0,settings$future_sample_sizes), c(0,y[3,5:10]), type='l', ylim=c(0,max(
 lines(c(0,settings$future_sample_sizes), c(0,y[4,5:10]), type='l', ylim=c(0,max(y[,5:10])), col='orange', lwd=2, lty=4)
 lines(c(0,settings$future_sample_sizes), c(0,y[5,5:10]), type='l', ylim=c(0,max(y[,5:10])), col='darkred', lwd=2, lty=6)
 lines(c(0,settings$future_sample_sizes), c(0,y[6,5:10]), type='l', ylim=c(0,max(y[,6:10])), col='red', lwd=2, lty=3)
-legend(-700, 1.03*max(y[,5:10]), legend=c("n=500","n=1000","n=2000","n=4000","n=8000",paste0("n=",nrow(data_us))), lty=c(1,5,2,4,6,3), col=c('black','blue','darkgreen','orange','darkred','red'), lwd=1, cex=0.6)
+#legend(-700, 1.03*max(y[,5:10]), legend=c("Development sample size\n", "500","1000","2000","4000","8000", paste0("n=",nrow(data_us))), lty=c(0, 1,5,2,4,6,3), col=c('white','black','blue','darkgreen','orange','darkred','red'), lwd=1, cex=0.6, bty="n")
+legend(-700, 1.03*max(y[,5:10]), legend=c("Development sample sizes\n", "500","1000","2000","4000","8000"), lty=c(0,1,5,2,4,6), col=c('white','black','blue','darkgreen','orange','darkred'), lwd=1, cex=0.6, bty="n")
 dev.off()
 
 
@@ -100,7 +101,8 @@ lines(c(0,settings$future_sample_sizes), c(0,y[3,5:10]), type='l', ylim=c(0,max(
 lines(c(0,settings$future_sample_sizes), c(0,y[4,5:10]), type='l', ylim=c(0,max(y[,5:10])), col='orange', lwd=2, lty=4)
 lines(c(0,settings$future_sample_sizes), c(0,y[5,5:10]), type='l', ylim=c(0,max(y[,5:10])), col='darkred', lwd=2, lty=6)
 lines(c(0,settings$future_sample_sizes), c(0,y[6,5:10]), type='l', ylim=c(0,max(y[,6:10])), col='red', lwd=2, lty=3)
-legend(-700, 1.03*max(y[,5:10]),  legend=c("n=500","n=1000","n=2000","n=4000","n=8000",paste0("n=",nrow(data_us))), lty=c(1,5,2,4,6,3), col=c('black','blue','darkgreen','orange','darkred','red'), lwd=1, cex=0.6)
+#legend(-700, 1.03*max(y[,5:10]), legend=c("Development sample size\n", "500","1000","2000","4000","8000", paste0("n=",nrow(data_us))), lty=c(0, 1,5,2,4,6,3), col=c('white','black','blue','darkgreen','orange','darkred','red'), lwd=1, cex=0.6, bty="n")
+legend(-700, 1.03*max(y[,5:10]), legend=c("Development sample size\n", "500","1000","2000","4000","8000"), lty=c(0,1,5,2,4,6), col=c('white','black','blue','darkgreen','orange','darkred'), lwd=1, cex=0.6, bty="n")
 dev.off()
 
 
