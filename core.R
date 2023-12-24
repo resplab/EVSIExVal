@@ -405,6 +405,82 @@ EVSI_ag <- function(evidence=list(prev=c(1,1), sn=c(1,1), sp=c(1,1)), z, future_
 
 
 
+EVSI_generic <- function(samples=data.frame(prev=rbeta(1000,1,1), sn=rbeta(1000,1,1), sp=rbeta(1000,1,1)), z, future_sample_sizes, n_sim=10^3)
+{
+  M <- nrow(samples)
+  
+  prev <- mean(samples$prev)
+  sn <- mean(samples$sn)
+  sp <- mean(samples$sp)
+  
+  cur_NBs <- c(0,
+               prev*sn-(1-prev)*(1-sp)*z/(1-z),
+               prev-(1-prev)*z/(1-z)
+  )
+  
+  true_NBs <- cbind(0,
+                    samples$prev*samples$sn-(1-samples$prev)*(1-samples$sp)*z/(1-z),
+                    samples$prev-(1-samples$prev)*z/(1-z)
+  )
+  
+  bests <- apply(true_NBs,1,which.max)
+  
+  p_best <- as.data.frame(table(bests)/nrow(true_NBs))
+  colnames(p_best)  <- c("Decision", "p_best")
+  levels(p_best$Decision) <- c("1"="Treat none", "2"="Use Model", "3"="treat All") 
+  
+  EVPI <- mean(apply(true_NBs,1,max)) - max(cur_NBs)
+  
+  if(length(future_sample_sizes)>0)
+  {
+    EVSI <- SE <- future_sample_sizes*NA
+    
+    require(progress)
+    pb <- progress_bar$new(total=length(future_sample_sizes))
+    
+    S <- do.call(rbind, replicate(n_sim, samples, simplify=FALSE))
+    TNB <- do.call(rbind, replicate(n_sim, true_NBs, simplify=FALSE))
+    
+    for(i in 1:length(future_sample_sizes))
+    {
+      future_sample_size <- future_sample_sizes[i]
+      
+      future_D <- rbinom(nrow(S), size=future_sample_size, prob=S$prev)
+      future_TP <- rbinom(nrow(S), size=future_D, prob=S$sn)
+      future_TN <- rbinom(nrow(S), size=future_sample_size-future_D, prob=S$sp)
+      
+      ws <<- rep(rbinom(1,1,0.5), nrow(samples))
+      updated_NBs <<- matrix(double(1), nrow=nrow(samples),ncol=3)
+      
+      find_winner <- function(D_TP_TN) #Takes one realization of future study and updates the evidence and eclares the winner
+      {
+        ws <<- dbinom(D_TP_TN[1], future_sample_size, samples[,1])*
+          dbinom(D_TP_TN[2], D_TP_TN[1], samples[,2])*
+          dbinom(D_TP_TN[3], future_sample_size-D_TP_TN[1], samples[,3])
+        
+        updated_NBs <<- cbind(0, 
+                              ws*(samples$prev*samples$sn-(1-samples$prev)*(1-samples$sp)*z/(1-z))/sum(ws),
+                              ws*(samples$prev-(1-samples$prev)*z/(1-z))/sum(ws)
+        )
+        which.max(colMeans(updated_NBs))
+      }
+      
+      winners <- apply(cbind(future_D, future_TP, future_TN), 1, find_winner)
+      
+      winning_NBs <- TNB[cbind(1:nrow(TNB),winners)]
+      
+      SE[i] <- sqrt(var(winning_NBs)/length(winning_NBs))
+      
+      EVSI[i] <-  mean(winning_NBs) - max(cur_NBs)
+      
+      pb$tick()
+    }
+  }
+  else EVSI=NULL
+  
+  list(EVPI=EVPI, EVSI=EVSI, p_best=p_best)
+}
+
 
 
 
