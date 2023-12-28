@@ -1,6 +1,3 @@
-
-source("core.R")
-
 library(tidyverse)
 library(voipred)
 library(pROC)
