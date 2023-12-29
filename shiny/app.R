@@ -8,7 +8,7 @@
 #
 
 library(shiny)
-library(EVSIExval)
+library(evsiexval)
 
 evidence <- list(prev = c(43L, 457L), se = c(41L, 2L), sp = c(147, 310))
 
@@ -249,11 +249,11 @@ server <- function(input, output)
         )
       ))
       observeEvent(input$cstat, {
-        res <- EVSIExval::solve_beta_given_mean_upper_ci(input$cstat[1],input$cstat[2])
+        res <- evsiexval::solve_beta_given_mean_upper_ci(input$cstat[1],input$cstat[2])
         output$cstat_dist <- renderText(paste0("c~Beta(", round(res$a,2),",",round(res$b,2),") | ", make95CrIFromBeta(res$a,res$b)))
       })
       observeEvent(input$prev, {
-        res <- EVSIExval::solve_beta_given_mean_upper_ci(input$prev[1]/100,input$prev[2]/100)
+        res <- evsiexval::solve_beta_given_mean_upper_ci(input$prev[1]/100,input$prev[2]/100)
         output$prev_dist <- renderText(paste0("prev~Beta(", round(res$a,2),",",round(res$b,2),") | ", make95CrIFromBeta(res$a,res$b)))
       })
       shinyjs::enable("n_sim_outer")
@@ -270,6 +270,8 @@ server <- function(input, output)
 
     z <- input$z/100
     N <- input$N
+    n_sim_outer <- input$n_sim_outer*1
+    n_sim_inner <- input$n_sim_inner*1
     n_stars <- c(0,as.integer(round(exp(seq(from=log(input$n_min), to=log(input$n_max), by=log(input$n_step))))))
 
     if(evidence$type==1)
@@ -278,7 +280,7 @@ server <- function(input, output)
     }
     if(evidence$type==2)
     {
-      samples <<- gen_triplets(1000, z=z, prev=evidence$params$prev, cs=evidence$params$cs, A=evidence$params$A, B=evidence$params$B)
+      samples <<- gen_triplets(n_sim_outer, z=z, prev=evidence$params$prev, cs=evidence$params$cs, A=evidence$params$A, B=evidence$params$B)
       VoI <- EVSI_g(samples[,c('prev','se','sp')], z, n_sim=1, future_sample_sizes=c())
     }
 
@@ -312,7 +314,7 @@ server <- function(input, output)
     if(evidence$type==2)
     {
       #samples <- gen_triplets(n_sim_outer, z=z, prev=evidence$params$prev, cs=evidence$params$cs, A=evidence$params$A, B=evidence$params$B)
-      VoI <- EVSI_g(samples[,c('prev','se','sp')], z, n_sim=n_sim_inner, future_sample_sizes=n_stars[-1])
+      VoI <- EVSI_gf(samples[,c('prev','se','sp')], z, n_sim=n_sim_inner, future_sample_sizes=n_stars[-1])
     }
 
     EVPI <- VoI$EVPI

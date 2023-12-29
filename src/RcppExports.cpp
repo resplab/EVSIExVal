@@ -12,7 +12,7 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 
 // CEVSI
 List CEVSI(NumericMatrix samples, double z, NumericVector futureSampleSizes, int nSim, bool debug);
-RcppExport SEXP _EVSIExval_CEVSI(SEXP samplesSEXP, SEXP zSEXP, SEXP futureSampleSizesSEXP, SEXP nSimSEXP, SEXP debugSEXP) {
+RcppExport SEXP _evsiexval_CEVSI(SEXP samplesSEXP, SEXP zSEXP, SEXP futureSampleSizesSEXP, SEXP nSimSEXP, SEXP debugSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -27,11 +27,11 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_EVSIExval_CEVSI", (DL_FUNC) &_EVSIExval_CEVSI, 5},
+    {"_evsiexval_CEVSI", (DL_FUNC) &_evsiexval_CEVSI, 5},
     {NULL, NULL, 0}
 };
 
-RcppExport void R_init_EVSIExval(DllInfo *dll) {
+RcppExport void R_init_evsiexval(DllInfo *dll) {
     R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
     R_useDynamicSymbols(dll, FALSE);
 }

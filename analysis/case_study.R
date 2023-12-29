@@ -1,4 +1,4 @@
-library(EVSIExval)
+library(evsiexval)
 setwd("C:/Users/msafavi/static/GitRepos/EVSIExVal/analysis")
 source("include.R")
 
