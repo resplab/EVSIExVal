@@ -25,32 +25,9 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
-// ldExp
-long double ldExp(long double x);
-RcppExport SEXP _EVSIExval_ldExp(SEXP xSEXP) {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    Rcpp::traits::input_parameter< long double >::type x(xSEXP);
-    rcpp_result_gen = Rcpp::wrap(ldExp(x));
-    return rcpp_result_gen;
-END_RCPP
-}
-// doubleSize
-int doubleSize();
-RcppExport SEXP _EVSIExval_doubleSize() {
-BEGIN_RCPP
-    Rcpp::RObject rcpp_result_gen;
-    Rcpp::RNGScope rcpp_rngScope_gen;
-    rcpp_result_gen = Rcpp::wrap(doubleSize());
-    return rcpp_result_gen;
-END_RCPP
-}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_EVSIExval_CEVSI", (DL_FUNC) &_EVSIExval_CEVSI, 5},
-    {"_EVSIExval_ldExp", (DL_FUNC) &_EVSIExval_ldExp, 1},
-    {"_EVSIExval_doubleSize", (DL_FUNC) &_EVSIExval_doubleSize, 0},
     {NULL, NULL, 0}
 };
 

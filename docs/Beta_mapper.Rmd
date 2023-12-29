@@ -1,0 +1,64 @@
+---
+title: "Beta Mapper"
+author: "Mohsen Sadatsafavi"
+date: "2023-12-28"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+---
+title: "beta mapper"
+format: html
+editor: visual
+---
+
+## Estimating the distribution of NBs from summary statistics of a model performance
+
+Our task is to generate many samples from the joint probability distribution P(prev, se, sp) from distributions on the performance of the model in a population.
+
+We assume we have specified probability distribution for the following parameters:
+
+-   Expected prevalence of the outcome in the target population
+
+-   c-statistic of the model in the target population
+
+-   Calibration slope and intercept for the model in the target population
+
+    -   Calibration slope and intercept refer to A and B in the following equation
+
+        $$ logit(P(Y=1 | \pi))=A+Blogit(\pi) $$ (the calibration function)
+
+
+## Lemma: 
+Let $\pi$ the predicted risk and $Y$ the corresponding binary outcome. If $P(\pi) \sim Beta(a,b)$ then $P(\pi | Y=0)\sim Beta(a,b+1)$ and $P(\pi | Y=1)\sim Beta(a+1,b)$. 
+
+Proof: trivial by using Bayes' theorem and the Beta-Bernoulli cojugacy.
+
+We will use the above finding twice: one to simplify the estimation of c-stat given $\pi \sim Beta$ to the probability of one Beta RV being greater than another Beta RV, and again when estimating sensitivity and specificity of a (potentially miscalibrated) model if the calibrated risk follows a Beta distribution.
+
+
+## Approach
+
+1.  We assume the distribution of CALIBRATED RISKS (ie., $p:= logit(P(Y=1 | \pi))$ follows a Beta distribution in the population. This is much more tractable than making assumptions about the distribution of $\pi$. We note that because the logit calibration connecting $p$ and $\pi$ is monotonic on $\pi$, our knowledge of the c-statistic for predicted risks carries to the same distribution for $p$.
+
+2.  Because we assume we know the mean and c-statistic, we should be able to derive the parameters of this Beta. Given the mean is known, this becomes a matter of finding the alpha parameters of the Beta distribution that gives rise to a given c-statistics.
+
+Given the above lemma, we will be dealing with Beta distribution all along. TODO: show that a=f(c-stat) is monotonical for a given mu?
+
+3.  We estimate the sensitivity and specificity of the model at a given threshold given the above-mentioned Beta, as well as calibration intercept and slope
+
+$$ se=P(\pi \ge z | Y=1)  $$,
+$$ sp=P(\pi \lt z | Y=0)  $$.
+
+Again, given the lemma, these probabilities follow a Beta distribution, so this is easy to calculate. For example, $se=P(\pi \ge z | Y=1)=P(logit(\pi)>logit(z) | Y=1)=P(A+Blogit(\pi)>A+Blogit(z) | Y=1)=P(logit(p)>A+Blogit(z) | Y=1) = P(p>expit(A+Blogit(z)) | Y=1)$ (assuming B>0 which is safe).
+
+And we do know $P(p | Y=1)$ given the Lemma.
+
+
+END OF DOCUMENT

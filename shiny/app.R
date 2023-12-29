@@ -10,7 +10,7 @@
 library(shiny)
 library(EVSIExval)
 
-evidence <- list(prev = c(43L, 457L), sn = c(41L, 2L), sp = c(147, 310))
+evidence <- list(prev = c(43L, 457L), se = c(41L, 2L), sp = c(147, 310))
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
@@ -69,21 +69,12 @@ ui <- fluidPage(
         HTML("Here we solicit your assessment of the model performance and your uncertainty around this asessment.
              Currently, this is based on trivariate specification (outcome prevalence, sensitivity, and specificity), with Beta distribution for modeling uncertainty for each component. In the future, other methods of uncertainty assessment will be added"),
         hr(),
-        fluidRow(
-          column(4,sliderInput("prev",label="Average outcome risk (outcome prevalence) (%)", min=0, max=100, step=0.1, value=evidence$prev[1]/sum(evidence$prev)*100, width="100%")),
-          column(4,numericInput("prev_n",label="Your estimate of the average risk of the clinical outcome is based on how many observations?", value=sum(evidence$prev))),
-          column(4, textOutput("prev_dist"))
-        ),hr(),
-        fluidRow(
-          column(4,sliderInput("sn",label="Sensitivity of the model at the chosen risk threshold (%)", min=0, max=100, step=0.1, value=evidence$sn[1]/sum(evidence$sn)*100, width="100%")),
-          column(4,numericInput("sn_n",label="Your estimate of sensitivity is based on how many observations?", value=sum(evidence$sn))),
-          column(4, textOutput("sn_dist"))
-        ),hr(),
-        fluidRow(
-          column(4,sliderInput("sp",label="Specificity the model at the chosen risk threshold (%)", min=0, max=100, step=0.1, value=evidence$sp[1]/sum(evidence$sp)*100, width="100%")),
-          column(4,numericInput("sp_n",label="Your estimate of sensitivity is based on how many observations?", value=sum(evidence$sp))),
-          column(4, textOutput("sp_dist"))
-        )
+        selectInput("evidence_type", "What type of evidence you have?", choices=c("0.PLEASE SELECT",
+                                                                                  "1.Independent beta performance",
+                                                                                  "2.Summary performance measures",
+                                                                                  "3.Draws from the posteroir distirbution")
+                    ),
+        uiOutput("evidence_inputs")
       ),
       tabPanel("Population parameters",
         fluidRow(
@@ -96,10 +87,21 @@ ui <- fluidPage(
         numericInput("n_min","Starting sample size", value=500),
         numericInput("n_max","Ending sample size", value=16000),
         sliderInput("n_step", "Sample size multiplier at each step", value=2, min=1.25, max=10, step=0.25),
-        numericInput("n_sim", "Number of simulations", min=100, max=10^67, value=10^5)
+        fluidRow(
+          column(4,
+            numericInput("n_sim_outer", "Number of outer-level simulations", min=100, max=10^6, value=10^5)),
+          column(4,
+            textOutput("n_sim_outer_note"))
+        ),
+        numericInput("n_sim_inner", "Number of inner-level simulations", min=100, max=10^6, value=10^5),
+        textOutput("n_sim_inner_note"),
+        p("Note: the computational difficulty of VoI methods differ, and the number of simulations should be chosen accordingly"),
+        br(),
+        p("For any non-trivial computations, please use the R package or the local version of this app on your computer")
       ),
       tabPanel("Results",
-        actionButton("run", "Run"), actionButton("clear_results", "Clear results"),
+        actionButton("prelim_run", "Preliminary analysis"), actionButton("clear_results", "Clear results"),
+        uiOutput("prelim_results"),
         uiOutput("results")
       )
     ),
@@ -113,33 +115,43 @@ server <- function(input, output)
 {
   construct_evidence <- reactive(
   {
-    evidence <- list(
-      prev=c(round(input$prev/100*input$prev_n), round(input$prev_n-input$prev/100*input$prev_n)),
-      sn=c(round(input$sn/100*input$sn_n), round(input$sn_n-input$sn/100*input$sn_n)),
-      sp=c(round(input$sp/100*input$sp_n), round(input$sp_n-input$sp/100*input$sp_n))
-    )
+    evidece_type <- substring(input$evidence_type,1,1)
+
+    if(evidece_type=="1")
+    {
+      evidence <- list(
+        type=1,
+        params=list(
+          prev=c(round(input$prev/100*input$prev_n), round(input$prev_n-input$prev/100*input$prev_n)),
+          se=c(round(input$se/100*input$se_n), round(input$se_n-input$se/100*input$se_n)),
+          sp=c(round(input$sp/100*input$sp_n), round(input$sp_n-input$sp/100*input$sp_n))
+        )
+      )
+    }
+    if(evidece_type=="2")
+    {
+      evidence <- list(
+        type=2,
+        params=list(
+          prev=c(mean=input$prev[1]/100, upper_ci=input$prev[2]/100),
+          cs=c(mean=input$cstat[1], upper_ci=input$cstat[2]),
+          A=c(mean=input$cal_intercept/1, sd=input$cal_intercept_sd/1),
+          B=c(mean=input$cal_slope/1, sd=input$cal_slope_sd/1)
+        )
+      )
+    }
     evidence
   })
 
-  evidence_changed <- reactive({
-    list(input$prev,input$prev_n, input$sn, input$sn_n, input$sp, input$sp_n)
-  })
-  observeEvent(evidence_changed(),{
-    evidence <- construct_evidence()
 
-    make95CrI <- function(parms)
-    {
-      paste0("95%CI ",
-            round(qbeta(0.025,parms[1],parms[2])*100,1),
-            "%-",
-            round(qbeta(0.975,parms[1],parms[2])*100,1),"%"
-            )
-    }
-
-    output$prev_dist <- renderText(paste0("prev~Beta(",paste0(evidence$prev,collapse=","),")\n", make95CrI(evidence$prev)))
-    output$sn_dist <- renderText(paste0("sn~Beta(",paste0(evidence$sn,collapse=","),")\n", make95CrI(evidence$sn)))
-    output$sp_dist <- renderText(paste0("sp~Beta(",paste0(evidence$sp,collapse=","),")\n", make95CrI(evidence$sp)))
-  })
+  make95CrIFromBeta <- function(a,b)
+  {
+    paste0("95%CI ",
+           round(qbeta(0.025,a,b)*100,1),
+           "%-",
+           round(qbeta(0.975,a,b)*100,1),"%"
+    )
+  }
 
   observeEvent(input$z, {
     z <- input$z/100
@@ -171,29 +183,146 @@ server <- function(input, output)
     output$results=renderUI(HTML(""))
   })
 
-  observeEvent(input$run, {
+  observeEvent(input$evidence_type, {
+    choice <- substring(input$evidence_type,1,1)
+    output$n_sim_outer_note <- renderText("")
+    output$evidence_inputs <- renderUI("")
+
+    if(choice=="1")
+    {
+      output$evidence_inputs <- renderUI(list(
+        fluidRow(
+          column(4,sliderInput("prev",label="Expected outcome risk (outcome prevalence) (%)", min=0, max=100, step=0.1, value=evidence$prev[1]/sum(evidence$prev)*100, width="100%")),
+          column(4,numericInput("prev_n",label="Your estimate of the average risk of the clinical outcome is based on how many observations?", value=sum(evidence$prev))),
+          column(4, textOutput("prev_dist"))
+        ),hr(),
+        fluidRow(
+          column(4,sliderInput("se",label="Sensitivity of the model at the chosen risk threshold (%)", min=0, max=100, step=0.1, value=evidence$se[1]/sum(evidence$se)*100, width="100%")),
+          column(4,numericInput("se_n",label="Your estimate of sensitivity is based on how many observations?", value=sum(evidence$se))),
+          column(4, textOutput("se_dist"))
+        ),hr(),
+        fluidRow(
+          column(4,sliderInput("sp",label="Specificity the model at the chosen risk threshold (%)", min=0, max=100, step=0.1, value=evidence$sp[1]/sum(evidence$sp)*100, width="100%")),
+          column(4,numericInput("sp_n",label="Your estimate of sensitivity is based on how many observations?", value=sum(evidence$sp))),
+          column(4, textOutput("sp_dist"))
+        )
+      ))
+      observeEvent(input$prev, {
+        a <- input$prev/100*input$prev_n
+        b <- input$prev_n-input$prev/100*input$prev_n
+        output$prev_dist <- renderText(paste0("prev~Beta(", a,",", b ,") | ", make95CrIFromBeta(a,b)))
+      }, autoDestroy=T)
+      observeEvent(input$se, {
+        a <- input$se/100*input$se_n
+        b <- input$se_n-input$se/100*input$se_n
+        output$se_dist <- renderText(paste0("se~Beta(", a,",", b ,") | ", make95CrIFromBeta(a,b)))
+      })
+      observeEvent(input$sp, {
+        a <- input$sp/100*input$sp_n
+        b <- input$sp_n-input$sp/100*input$prev_n
+        output$sp_dist <- renderText(paste0("sp~Beta(", a,",", b ,") | ", make95CrIFromBeta(a,b)))
+      })
+      updateNumericInput(inputId="n_sim_outer",value="")
+      shinyjs::disable("n_sim_outer")
+      output$n_sim_outer_note <- renderText("Outer simulation is not applicable to the selected type of evidence specification on model performance because of conjugate probability distirbutions.")
+    }
+    if(choice=="2")
+    {
+      output$evidence_inputs <- renderUI(list(
+        fluidRow(
+          column(4, sliderInput("prev",label="Expected outcome risk (outcome prevalence) (%)", min=0, max=100, step=0.1, value=c(40,60), width="100%")),
+          column(4, textOutput("prev_dist"))
+        ),hr(),
+        fluidRow(
+          column(4, sliderInput("cstat",label="Expected value and upper 95%CI bound of the c-statistic", min=0.51, max=0.99, step=0.001, value=c(0.70,0.80), width="100%")),
+          column(4, textOutput("cstat_dist"))
+        ),hr(),
+        fluidRow(
+          column(4, sliderInput("cal_intercept",label="Expected calibration intercept", min=-1, max=1, step=0.01, value=0, width="100%")),
+          column(4, numericInput("cal_intercept_sd",label="SE of the intercept", value=0.1)),
+          column(4, textOutput("cal_intercept_dist"))
+        ),
+        fluidRow(
+          column(4, sliderInput("cal_slope",label="Expected calibration slope", min=-2, max=2, step=0.01, value=1, width="100%")),
+          column(4, numericInput("cal_slope_sd",label="SE of the slope", value=0.1)),
+          column(4, textOutput("cal_slope_dist"))
+        )
+      ))
+      observeEvent(input$cstat, {
+        res <- EVSIExval::solve_beta_given_mean_upper_ci(input$cstat[1],input$cstat[2])
+        output$cstat_dist <- renderText(paste0("c~Beta(", round(res$a,2),",",round(res$b,2),") | ", make95CrIFromBeta(res$a,res$b)))
+      })
+      observeEvent(input$prev, {
+        res <- EVSIExval::solve_beta_given_mean_upper_ci(input$prev[1]/100,input$prev[2]/100)
+        output$prev_dist <- renderText(paste0("prev~Beta(", round(res$a,2),",",round(res$b,2),") | ", make95CrIFromBeta(res$a,res$b)))
+      })
+      shinyjs::enable("n_sim_outer")
+      output$n_sim_outer_note <- renderText("This value cannot be set to >100 for the web app. For larger values use the R package directly")
+    }
+    if(choice=="3")
+    {
+
+    }
+  })
+
+  observeEvent(input$prelim_run, {
     evidence <- construct_evidence()
 
     z <- input$z/100
-    n_sim <- input$n_sim
-
+    N <- input$N
     n_stars <- c(0,as.integer(round(exp(seq(from=log(input$n_min), to=log(input$n_max), by=log(input$n_step))))))
-    VoI <- EVSI_ag(evidence, z, n_sim=n_sim, future_sample_sizes=n_stars[-1])
+
+    if(evidence$type==1)
+    {
+      VoI <- EVSI_ag(evidence$params, z, n_sim=1, future_sample_sizes=c())
+    }
+    if(evidence$type==2)
+    {
+      samples <<- gen_triplets(1000, z=z, prev=evidence$params$prev, cs=evidence$params$cs, A=evidence$params$A, B=evidence$params$B)
+      VoI <- EVSI_g(samples[,c('prev','se','sp')], z, n_sim=1, future_sample_sizes=c())
+    }
+
     EVPI <- VoI$EVPI
     p_best <- VoI$p_best
-    EVSIs <- c(0,VoI$EVSI)
-    lambda <- input$lambda
-    N <- input$N
-    ENBS <- EVSIs*N-n_stars/lambda
 
     require("knitr")
-    output$results <- renderUI(list(
+    output$prelim_results <- renderUI(list(
       renderText(paste("EVPI=",format(EVPI, nsmall=5))),
       renderText(paste("Population EVPI=",format(EVPI*N, nsmall=2))),
       hr(),
       renderTable(p_best),
       HTML(ifelse(max(p_best$p_best)>0.99, "<B style='color:red; font-weight:bold;'>In more than 99% of simulations the same stratgy had the highest NB. This indicates there is not much uncertainty around this decision. VoI analysis might be degenrate and non-informative.</B>","")),
-      hr(),
+      actionButton("evsi_run","Run EVSI analysis")
+      ))
+  })
+
+  observeEvent(input$evsi_run, {
+    evidence <- construct_evidence()
+
+    N <- input$N
+    z <- input$z/100
+    n_sim_outer <- input$n_sim_outer*1
+    n_sim_inner <- input$n_sim_inner*1
+    n_stars <- c(0,as.integer(round(exp(seq(from=log(input$n_min), to=log(input$n_max), by=log(input$n_step))))))
+
+    if(evidence$type==1)
+    {
+      VoI <- EVSI_ag(evidence$params, z, n_sim=n_sim_inner, future_sample_sizes=n_stars[-1])
+    }
+    if(evidence$type==2)
+    {
+      #samples <- gen_triplets(n_sim_outer, z=z, prev=evidence$params$prev, cs=evidence$params$cs, A=evidence$params$A, B=evidence$params$B)
+      VoI <- EVSI_g(samples[,c('prev','se','sp')], z, n_sim=n_sim_inner, future_sample_sizes=n_stars[-1])
+    }
+
+    EVPI <- VoI$EVPI
+    EVSIs <- c(0,VoI$EVSI)
+    lambda <- input$lambda
+    ENBS <- EVSIs*N-n_stars/lambda
+
+
+    require("knitr")
+    output$results <- renderUI(list(
       renderTable(data.frame("sample size"=as.integer(n_stars),
                                                       "EVSI"=format(EVSIs, nsmall=5),
                                                       "Population EVSI"=as.double(EVSIs*N),
@@ -226,5 +355,5 @@ server <- function(input, output)
   })
 }
 
-# Run the application
+
 shinyApp(ui = ui, server = server)

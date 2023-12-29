@@ -1,0 +1,164 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+%
+\documentclass[
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+% Set default figure placement to htbp
+\makeatletter
+\def\fps@figure{htbp}
+\makeatother
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\IfFileExists{bookmark.sty}{\usepackage{bookmark}}{\usepackage{hyperref}}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  pdftitle={beta mapper},
+  pdfauthor={Mohsen Sadatsafavi},
+  hidelinks,
+  pdfcreator={LaTeX via pandoc}}
+
+\title{beta mapper}
+\author{Mohsen Sadatsafavi}
+\date{2023-12-28}
+
+\begin{document}
+\maketitle
+
+\hypertarget{estimating-the-distribution-of-nbs-from-summary-statistics-of-a-model-performance}{%
+\subsection{Estimating the distribution of NBs from summary statistics
+of a model
+performance}\label{estimating-the-distribution-of-nbs-from-summary-statistics-of-a-model-performance}}
+
+Our task is to generate many samples from the joint probability
+distribution P(prev, se, sp) from distributions on the performance of
+the model in a population.
+
+We assume we have specified probability distribution for the following
+parameters:
+
+\begin{itemize}
+\item
+  Expected prevalence of the outcome in the target population
+\item
+  c-statistic of the model in the target population
+\item
+  Calibration slope and intercept for the model in the target population
+
+  \begin{itemize}
+  \item
+    Calibration slope and intercept refer to A and B in the following
+    equation
+
+    \[ logit(P(Y=1 | \pi))=A+Blogit(\pi) \] (the calibration function)
+  \end{itemize}
+\end{itemize}
+
+\hypertarget{lemma}{%
+\subsection{Lemma:}\label{lemma}}
+
+Let \(\pi\) the predicted risk and \(Y\) the corresponding binary
+outcome. If \(P(\pi) \sim Beta(a,b)\) then
+\(P(\pi | Y=0)\sim Beta(a,b+1)\) and \(P(\pi | Y=1)\sim Beta(a+1,b)\).
+
+Proof: trivial by using Bayes' theorem and the Beta-Bernoulli cojugacy.
+
+We will use the above finding twice: one to simplify the estimation of
+c-stat given \(\pi \sim Beta\) to the probability of one Beta RV being
+greater than another Beta RV, and again when estimating sensitivity and
+specificity of a (potentially miscalibrated) model if the calibrated
+risk follows a Beta distribution.
+
+\hypertarget{approach}{%
+\subsection{Approach}\label{approach}}
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\item
+  We assume the distribution of CALIBRATED RISKS (ie.,
+  \(p:= logit(P(Y=1 | \pi))\) follows a Beta distribution in the
+  population. This is much more tractable than making assumptions about
+  the distribution of \(\pi\). We note that because the logit
+  calibration connecting \(p\) and \(\pi\) is monotonic on \(\pi\), our
+  knowledge of the c-statistic for predicted risks carries to the same
+  distribution for \(p\).
+\item
+  Because we assume we know the mean and c-statistic, we should be able
+  to derive the parameters of this Beta. Given the mean is known, this
+  becomes a matter of finding the alpha parameters of the Beta
+  distribution that gives rise to a given c-statistics.
+\end{enumerate}
+
+Given the above lemma, we will be dealing with Beta distribution all
+along. TODO: show that a=f(c-stat) is monotonical for a given mu?
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{2}
+\tightlist
+\item
+  We estimate the sensitivity and specificity of the model at a given
+  threshold given the above-mentioned Beta, as well as calibration
+  intercept and slope
+\end{enumerate}
+
+\[ se=P(\pi \ge z | Y=1)  \], \[ sp=P(\pi \lt z | Y=0)  \].
+
+Again, given the lemma, these probabilities follow a Beta distribution,
+so this is easy to calculate. For example,
+\(se=P(\pi \ge z | Y=1)=P(logit(\pi)>logit(z) | Y=1)=P(A+Blogit(\pi)>A+Blogit(z) | Y=1)=P(logit(p)>A+Blogit(z) | Y=1) = P(p>expit(A+Blogit(z)) | Y=1)\)
+(assuming B\textgreater0 which is safe).
+
+And we do know \(P(p | Y=1)\) given the Lemma.
+
+END OF DOCUMENT
+
+\end{document}
