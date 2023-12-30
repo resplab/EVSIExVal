@@ -10,7 +10,23 @@
 library(shiny)
 library(evsiexval)
 
-evidence <- list(prev = c(43L, 457L), se = c(41L, 2L), sp = c(147, 310))
+
+global_vars <- list(
+  evidence_type="", #ind_beta, prev_cs_A_B, sample
+  evidence=list(),
+  default_values=list(
+    exchange_rates=list(z=0.02, lambda=100),
+    evidence=list(
+      ind_beta=list(prev = c(43L, 457L), se = c(41L, 2L), sp = c(147, 310))
+    )
+  ),
+  result_level=0,
+  sample=data.frame()
+)
+
+
+
+
 
 # Define UI for application that draws a histogram
 ui <- fluidPage(
@@ -100,9 +116,8 @@ ui <- fluidPage(
         p("For any non-trivial computations, please use the R package or the local version of this app on your computer")
       ),
       tabPanel("Results",
-        actionButton("prelim_run", "Preliminary analysis"), actionButton("clear_results", "Clear results"),
-        uiOutput("prelim_results"),
-        uiOutput("results")
+        actionButton("run1", "Run the analysis"), actionButton("clear_results", "Clear results"),
+        uiOutput("results1")
       )
     ),
 )
@@ -113,34 +128,41 @@ ui <- fluidPage(
 # Define server logic required to draw a histogram
 server <- function(input, output)
 {
-  construct_evidence <- reactive(
+  process_inputs <- reactive(
   {
-    evidece_type <- substring(input$evidence_type,1,1)
+    if(global_vars$evidence_type=="ind_beta")
+    {
+      evidence <- list(
+        prev=c(round(input$prev/100*input$prev_n), round(input$prev_n-input$prev/100*input$prev_n)),
+        se=c(round(input$se/100*input$se_n), round(input$se_n-input$se/100*input$se_n)),
+        sp=c(round(input$sp/100*input$sp_n), round(input$sp_n-input$sp/100*input$sp_n))
+      )
+    }
+    if(global_vars$evidence_type=="prev_cs_A_B")
+    {
+      evidence <- list(
+        prev=c(mean=input$prev[1]/100, upper_ci=input$prev[2]/100),
+        cs=c(mean=input$cstat[1], upper_ci=input$cstat[2]),
+        A=c(mean=input$cal_intercept/1, sd=input$cal_intercept_sd/1),
+        B=c(mean=input$cal_slope/1, sd=input$cal_slope_sd/1)
+      )
+    }
+    global_vars$evidence<<-evidence
 
-    if(evidece_type=="1")
-    {
-      evidence <- list(
-        type=1,
-        params=list(
-          prev=c(round(input$prev/100*input$prev_n), round(input$prev_n-input$prev/100*input$prev_n)),
-          se=c(round(input$se/100*input$se_n), round(input$se_n-input$se/100*input$se_n)),
-          sp=c(round(input$sp/100*input$sp_n), round(input$sp_n-input$sp/100*input$sp_n))
-        )
-      )
-    }
-    if(evidece_type=="2")
-    {
-      evidence <- list(
-        type=2,
-        params=list(
-          prev=c(mean=input$prev[1]/100, upper_ci=input$prev[2]/100),
-          cs=c(mean=input$cstat[1], upper_ci=input$cstat[2]),
-          A=c(mean=input$cal_intercept/1, sd=input$cal_intercept_sd/1),
-          B=c(mean=input$cal_slope/1, sd=input$cal_slope_sd/1)
-        )
-      )
-    }
-    evidence
+    global_vars$z <<- input$z/100
+    global_vars$lambda<<-input$lambda
+    renderPlot({
+      plot(global_vars$n_stars, EVSIs, type='l', xlab="Sample size of the future study", ylab="EVSI")
+      title("Expected Value of Sample Information (in true positive units)")
+      y2 <- pretty(c(0,global_vars$N*EVPI))
+      axis(4, at=y2/global_vars$N, labels=y2)
+      mtext("Population EVSI", side = 4)
+      lines(c(0,max(global_vars$n_stars)), rep(EVPI,2), col="gray")
+    })
+    global_vars$N <<- input$N
+    global_vars$n_sim_outer <<- input$n_sim_outer*1
+    global_vars$n_sim_inner <<- input$n_sim_inner*1
+    global_vars$n_stars <<- c(0,as.integer(round(exp(seq(from=log(input$n_min), to=log(input$n_max), by=log(input$n_step))))))
   })
 
 
@@ -180,30 +202,31 @@ server <- function(input, output)
   })
 
   observeEvent(input$clear_results, {
-    output$results=renderUI(HTML(""))
+    global_vars$result_level<<-0
+    output$results1=renderUI(HTML(""))
   })
 
   observeEvent(input$evidence_type, {
     choice <- substring(input$evidence_type,1,1)
     output$n_sim_outer_note <- renderText("")
     output$evidence_inputs <- renderUI("")
-
     if(choice=="1")
     {
+      global_vars$evidence_type <<- "ind_beta"
       output$evidence_inputs <- renderUI(list(
         fluidRow(
-          column(4,sliderInput("prev",label="Expected outcome risk (outcome prevalence) (%)", min=0, max=100, step=0.1, value=evidence$prev[1]/sum(evidence$prev)*100, width="100%")),
-          column(4,numericInput("prev_n",label="Your estimate of the average risk of the clinical outcome is based on how many observations?", value=sum(evidence$prev))),
+          column(4,sliderInput("prev",label="Expected outcome risk (outcome prevalence) (%)", min=0, max=100, step=0.1, value=global_vars$default_values$evidence$ind_beta$prev[1]/sum(global_vars$default_values$evidence$ind_beta$prev)*100, width="100%")),
+          column(4,numericInput("prev_n",label="Your estimate of the average risk of the clinical outcome is based on how many observations?", value=sum(global_vars$default_values$evidence$ind_beta$prev))),
           column(4, textOutput("prev_dist"))
         ),hr(),
         fluidRow(
-          column(4,sliderInput("se",label="Sensitivity of the model at the chosen risk threshold (%)", min=0, max=100, step=0.1, value=evidence$se[1]/sum(evidence$se)*100, width="100%")),
-          column(4,numericInput("se_n",label="Your estimate of sensitivity is based on how many observations?", value=sum(evidence$se))),
+          column(4,sliderInput("se",label="Sensitivity of the model at the chosen risk threshold (%)", min=0, max=100, step=0.1, value=global_vars$default_values$evidence$ind_beta$se[1]/sum(global_vars$default_values$evidence$ind_beta$se)*100, width="100%")),
+          column(4,numericInput("se_n",label="Your estimate of sensitivity is based on how many observations?", value=sum(global_vars$default_values$evidence$ind_beta$se))),
           column(4, textOutput("se_dist"))
         ),hr(),
         fluidRow(
-          column(4,sliderInput("sp",label="Specificity the model at the chosen risk threshold (%)", min=0, max=100, step=0.1, value=evidence$sp[1]/sum(evidence$sp)*100, width="100%")),
-          column(4,numericInput("sp_n",label="Your estimate of sensitivity is based on how many observations?", value=sum(evidence$sp))),
+          column(4,sliderInput("sp",label="Specificity the model at the chosen risk threshold (%)", min=0, max=100, step=0.1, value=global_vars$default_values$evidence$ind_beta$sp[1]/sum(global_vars$default_values$evidence$ind_beta$sp)*100, width="100%")),
+          column(4,numericInput("sp_n",label="Your estimate of sensitivity is based on how many observations?", value=sum(global_vars$default_values$evidence$ind_beta$sp))),
           column(4, textOutput("sp_dist"))
         )
       ))
@@ -228,6 +251,7 @@ server <- function(input, output)
     }
     if(choice=="2")
     {
+      global_vars$evidence_type <<- "prev_cs_A_B"
       output$evidence_inputs <- renderUI(list(
         fluidRow(
           column(4, sliderInput("prev",label="Expected outcome risk (outcome prevalence) (%)", min=0, max=100, step=0.1, value=c(40,60), width="100%")),
@@ -261,92 +285,101 @@ server <- function(input, output)
     }
     if(choice=="3")
     {
-
+      global_vars$evidence_type <<- "sample"
     }
   })
 
-  observeEvent(input$prelim_run, {
-    evidence <- construct_evidence()
 
-    z <- input$z/100
-    N <- input$N
-    n_sim_outer <- input$n_sim_outer*1
-    n_sim_inner <- input$n_sim_inner*1
-    n_stars <- c(0,as.integer(round(exp(seq(from=log(input$n_min), to=log(input$n_max), by=log(input$n_step))))))
-
-    if(evidence$type==1)
+  observeEvent(input$run1, {
+    if(is.null(global_vars$evidence_type) | global_vars$evidence_type=="")
     {
-      VoI <- EVSI_ag(evidence$params, z, n_sim=1, future_sample_sizes=c())
+      output$results1 <- renderText("Error: You have not characterized model performance")
+      return()
     }
-    if(evidence$type==2)
+
+    stuff_to_render <- list()
+
+    res <- process_inputs()
+
+    if(global_vars$evidence_type=="ind_beta")
     {
-      samples <<- gen_triplets(n_sim_outer, z=z, prev=evidence$params$prev, cs=evidence$params$cs, A=evidence$params$A, B=evidence$params$B)
-      VoI <- EVSI_g(samples[,c('prev','se','sp')], z, n_sim=1, future_sample_sizes=c())
+      VoI <- EVSI_ag(global_vars$evidence, global_vars$z, n_sim=global_vars$n_sim_inner, future_sample_sizes=c())
+    }
+    if(global_vars$evidence_type=="prev_cs_A_B")
+    {
+      if(global_vars$n_sim_outer>1000)
+      {
+        output$results1 <- renderText("Error: number of outer simulations for this type cannot be more than 1000. For larger values please use the R package locally.")
+        return()
+      }
+      global_vars$sample <<- gen_triplets(n_sim_outer, z=global_vars$z, prev=global_vars$evidence$prev, cs=global_vars$evidence$cs, A=global_vars$evidence$A, B=global_vars$evidence$B)
+      stuff_to_render <- c(stuff_to_render, renderText(paste("Results are based on a sample of", nrow(global_vars$sample), "draws.")))
+      VoI <- EVSI_g(global_vars$sample[,c('prev','se','sp')], global_vars$z, n_sim=1, future_sample_sizes=c())
     }
 
     EVPI <- VoI$EVPI
     p_best <- VoI$p_best
 
     require("knitr")
-    output$prelim_results <- renderUI(list(
+    stuff_to_render <- c(stuff_to_render,list(
       renderText(paste("EVPI=",format(EVPI, nsmall=5))),
-      renderText(paste("Population EVPI=",format(EVPI*N, nsmall=2))),
+      renderText(paste("Population EVPI=",format(EVPI*global_vars$N, nsmall=2))),
       hr(),
       renderTable(p_best),
       HTML(ifelse(max(p_best$p_best)>0.99, "<B style='color:red; font-weight:bold;'>In more than 99% of simulations the same stratgy had the highest NB. This indicates there is not much uncertainty around this decision. VoI analysis might be degenrate and non-informative.</B>","")),
-      actionButton("evsi_run","Run EVSI analysis")
+      hr(),
+      actionButton("evsi_run","Run EVSI analysis"),
+      uiOutput("results2")
       ))
+
+    output$results1 <- renderUI(stuff_to_render)
+
+    global_vars$result_level <<- 1
+    output$results2 <- renderUI("")
   })
 
+
+
   observeEvent(input$evsi_run, {
-    evidence <- construct_evidence()
-
-    N <- input$N
-    z <- input$z/100
-    n_sim_outer <- input$n_sim_outer*1
-    n_sim_inner <- input$n_sim_inner*1
-    n_stars <- c(0,as.integer(round(exp(seq(from=log(input$n_min), to=log(input$n_max), by=log(input$n_step))))))
-
-    if(evidence$type==1)
+    if(global_vars$evidence_type=="ind_beta")
     {
-      VoI <- EVSI_ag(evidence$params, z, n_sim=n_sim_inner, future_sample_sizes=n_stars[-1])
+      VoI <- EVSI_ag(global_vars$evidence, global_vars$z, n_sim=global_vars$n_sim_inner, future_sample_sizes=global_vars$n_stars[-1])
     }
-    if(evidence$type==2)
+    if(global_vars$evidence_type=="prev_cs_A_B")
     {
-      #samples <- gen_triplets(n_sim_outer, z=z, prev=evidence$params$prev, cs=evidence$params$cs, A=evidence$params$A, B=evidence$params$B)
-      VoI <- EVSI_gf(samples[,c('prev','se','sp')], z, n_sim=n_sim_inner, future_sample_sizes=n_stars[-1])
+      withProgress({
+        VoI <- EVSI_gf(global_vars$sample[,c('prev','se','sp')], global_vars$z, n_sim=global_vars$n_sim_inner, future_sample_sizes=global_vars$n_stars[-1])
+      }, message="Computing")
     }
 
     EVPI <- VoI$EVPI
     EVSIs <- c(0,VoI$EVSI)
-    lambda <- input$lambda
-    ENBS <- EVSIs*N-n_stars/lambda
-
+    ENBS <- EVSIs*global_vars$N-global_vars$n_stars/global_vars$lambda
 
     require("knitr")
-    output$results <- renderUI(list(
-      renderTable(data.frame("sample size"=as.integer(n_stars),
+    output$results2 <- renderUI(list(
+      renderTable(data.frame("sample size"=as.integer(global_vars$n_stars),
                                                       "EVSI"=format(EVSIs, nsmall=5),
-                                                      "Population EVSI"=as.double(EVSIs*N),
+                                                      "Population EVSI"=as.double(EVSIs*global_vars$N),
                                                       "ENBS"=as.double(ENBS)
                                                       )),
       renderPlot({
-        plot(n_stars, EVSIs, type='l', xlab="Sample size of the future study", ylab="EVSI")
+        plot(global_vars$n_stars, EVSIs, type='l', xlab="Sample size of the future study", ylab="EVSI")
         title("Expected Value of Sample Information (in true positive units)")
-        y2 <- pretty(c(0,N*EVPI))
-        axis(4, at=y2/N, labels=y2)
+        y2 <- pretty(c(0,global_vars$N*EVPI))
+        axis(4, at=y2/global_vars$N, labels=y2)
         mtext("Population EVSI", side = 4)
-        lines(c(0,max(n_stars)), rep(EVPI,2), col="gray")
+        lines(c(0,max(global_vars$n_stars)), rep(EVPI,2), col="gray")
       }),
 
       renderPlot({
-        plot(n_stars, ENBS, type='l', xlab="Sample size of the future study", ylab="ENBS")
+        plot(global_vars$n_stars, ENBS, type='l', xlab="Sample size of the future study", ylab="ENBS")
         title("Expected Net benefit of Sampling (in true positive units)")
         winner <- which.max(ENBS)
         if(winner!=1 & winner!=length(ENBS))
         {
-          lines(c(n_stars[winner], n_stars[winner]), c(0, max(ENBS)), col='red')
-          text(n_stars[winner]*1.1,max(ENBS)/2,paste0("Optimal sample size:",n_stars[winner]), col='red')
+          lines(c(global_vars$n_stars[winner], global_vars$n_stars[winner]), c(0, max(ENBS)), col='red')
+          text(global_vars$n_stars[winner]*1.1,max(ENBS)/2,paste0("Optimal sample size:",global_vars$n_stars[winner]), col='red')
         }
         else
         {
@@ -354,6 +387,7 @@ server <- function(input, output)
         }
       })
     ))
+    global_vars$result_level <<- 2
   })
 }
 

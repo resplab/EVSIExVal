@@ -1,6 +1,6 @@
 
 
-#####################Test bette mapper things#######################
+#####################Test beta mapper things#######################
 source("include.R")
 val_data <- val_data[sample(1:(dim(data_us)[1]),500,F),]
 
