@@ -1,26 +1,21 @@
 logit <- function(x) {log(x/(1-x))}
 expit <- function(x) {1/(1+exp(-x))}
 
-
-
 calc_c_from_beta <- function(a,b)
 {
-  res <- integrate(function(x){dbeta(x,a,b+1)*(1-pbeta(x,a+1,b))}, lower=0, upper=1)
-  res$value
+  res <- cubature::cubintegrate(function(x){
+    dbeta(x,a,b+1)*(1-pbeta(x,a+1,b))
+    }, lower=0, upper=1, method = "cuhre")
+  res[[1]]
 }
-
-
-
 
 calc_c_from_beta_sim <- function(a,b, n_sim=10^6)
 {
   pi <- rbeta(n_sim, a, b)
   Y <- rbinom(n_sim, 1, pi)
   require(pROC)
-  roc(Y~pi)$auc
+  print(c(mean(Y),  roc(Y~pi)$auc))
 }
-
-
 
 
 solve_beta_given_prev_cs <- function(prev,cs)
@@ -28,18 +23,20 @@ solve_beta_given_prev_cs <- function(prev,cs)
   f <- function(a)
   {
     b <- a*(1-prev)/prev
-    (calc_c_from_beta(a,b)-cs)^2
+    sqrt((calc_c_from_beta(a,b)-cs)^2)
   }
 
-  res <- optimize(f,c(0.01,100))
-  a <- res$minimum
+  # res <-optimize(f,lower = 0,upper=100000000000)
+  require(OOR)
+  res <- OOR::StoSOO(par=NA,fn = f,
+                     lower = 0,
+                     upper=10000,nb_iter=1000,control=list(type='det',verbose=0))
+  # res <- optim(1,fn=f,lower=0,upper=100000,method="L-BFGS-B")
+  a <- res[[1]]
   b <- a*(1-prev)/prev
 
   c(a=a,b=b)
 }
-
-
-
 
 #Maps an input [mu, upper bound] to
 ##' @export
