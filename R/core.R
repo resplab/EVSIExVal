@@ -201,11 +201,6 @@ EVSI_ag <- function(evidence=list(prev=c(1,1), se=c(1,1), sp=c(1,1)), z, future_
   se <- posterior$se[1]/sum(posterior$se)
   sp <- posterior$sp[1]/sum(posterior$sp)
 
-  cur_NBs <- c(0,
-               mean(prev*se-(1-prev)*(1-sp)*z/(1-z)),
-               mean(prev-(1-prev)*z/(1-z))
-  )
-
   pop_data <- data.frame(prev=rbeta(n_sim, posterior$prev[1], posterior$prev[2]),
                          se=rbeta(n_sim, posterior$se[1], posterior$se[2]),
                          sp=rbeta(n_sim, posterior$sp[1], posterior$sp[2]))
@@ -213,9 +208,19 @@ EVSI_ag <- function(evidence=list(prev=c(1,1), se=c(1,1), sp=c(1,1)), z, future_
                     pop_data$prev*pop_data$se-(1-pop_data$prev)*(1-pop_data$sp)*z/(1-z),
                     pop_data$prev-(1-pop_data$prev)*z/(1-z)
   )
-  p_best <- as.data.frame(table(apply(true_NBs,1,which.max))/nrow(true_NBs))
-  colnames(p_best)  <- c("Decision", "p_best")
-  levels(p_best$Decision) <- c("1"="Treat none", "2"="Use Model", "3"="treat All")
+
+  cur_NBs <- cbind("Treat none"=0,
+                   "Use model"=mean(true_NBs[,2]),
+                   "Treat all"=mean(true_NBs[,3])
+  )
+
+  #For output
+  summary <- cur_NBs
+  summary <- rbind(summary, apply(true_NBs, 2, quantile, c(0.025,0.975)))
+  summary <- rbind(summary, c(0,0,0))
+  p_best <- table(apply(true_NBs,1,which.max))/nrow(true_NBs)
+  summary[4, as.numeric(colnames(t(as.matrix(p_best))))] <- p_best
+  rownames(summary) <- c("Expected NB", "95% CI L", "95% CI H", "P_best")
 
   EVPI <- mean(apply(true_NBs,1,max)) - max(cur_NBs)
 
@@ -263,7 +268,7 @@ EVSI_ag <- function(evidence=list(prev=c(1,1), se=c(1,1), sp=c(1,1)), z, future_
   }
   else EVSI=NULL
 
-  list(EVPI=EVPI, EVSI=EVSI, p_best=p_best)
+  list(summary=summary, EVPI=EVPI, EVSI=EVSI)
 }
 
 
@@ -279,21 +284,24 @@ EVSI_g <- function(samples=data.frame(prev=rbeta(100,1,1), se=rbeta(100,1,1), sp
   #Turn samples to matrix for faster computerions, make sure order is (prev, se, sp)
   samples <- as.matrix(samples[,c('prev','se','sp')])
 
-  cur_NBs <- c(0,
-               mean(samples[,1]*samples[,2]-(1-samples[,1])*(1-samples[,3])*z/(1-z)),
-               mean(samples[,1]-(1-samples[,1])*z/(1-z))
-  )
 
   true_NBs <- cbind(0,
                     samples[,1]*samples[,2]-(1-samples[,1])*(1-samples[,3])*z/(1-z),
                     samples[,1]-(1-samples[,1])*z/(1-z)
   )
 
-  bests <- apply(true_NBs,1,which.max)
+  cur_NBs <- cbind("Treat none"=0,
+               "Use model"=mean(true_NBs[,2]),
+               "Treat all"=mean(true_NBs[,3])
+  )
 
-  p_best <- as.data.frame(table(bests)/nrow(true_NBs))
-  colnames(p_best)  <- c("Decision", "p_best")
-  levels(p_best$Decision) <- c("1"="Treat none", "2"="Use Model", "3"="treat All")
+  #For output
+  summary <- cur_NBs
+  summary <- rbind(summary, apply(true_NBs, 2, quantile, c(0.025,0.975)))
+  summary <- rbind(summary, c(0,0,0))
+  p_best <- table(apply(true_NBs,1,which.max))/nrow(true_NBs)
+  summary[4, as.numeric(colnames(t(as.matrix(p_best))))] <- p_best
+  rownames(summary) <- c("Expected NB", "95% CI L", "95% CI H", "P_best")
 
   EVPI <- mean(apply(true_NBs,1,max)) - max(cur_NBs)
 
@@ -344,7 +352,7 @@ EVSI_g <- function(samples=data.frame(prev=rbeta(100,1,1), se=rbeta(100,1,1), sp
   }
   else EVSI=NULL
 
-  list(EVPI=EVPI, EVSI=EVSI, p_best=p_best)
+  list(summary=summary, EVPI=EVPI, EVSI=EVSI)
 }
 
 ##' @export

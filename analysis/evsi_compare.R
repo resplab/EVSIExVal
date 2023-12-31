@@ -5,7 +5,7 @@ z=0.01
 evidence <- list(prev = c(43L, 457L), se = c(43L, 0L), sp = c(65, 392))
 res_a <- EVSI_ag(evidence, z, future_sample_sizes, 10^6)
 x <- data.frame(prev=rbeta(1000,evidence$prev[1]+1,evidence$prev[2]+1),se=rbeta(1000,evidence$se[1]+1,evidence$se[2]+1),sp=rbeta(1000,evidence$sp[1]+1,evidence$sp[2]+1))
-#res_g <- EVSI_generic(x[1:100,],z,n_sim=1000,future_sample_sizes)
+#res_g <- EVSI_g(x[1:100,],z,n_sim=1000,future_sample_sizes)
 res_gc <- EVSI_gf(x,z,future_sample_sizes,1000)
 #res_gc2 <- CEVSI(as.matrix(x[101:200,]),z,future_sample_sizes,10000,F)
 
