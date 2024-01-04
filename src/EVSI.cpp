@@ -18,8 +18,11 @@ using namespace Rcpp;
 
    List out=List::create();
 
+   int progressTicker = (int)(nSamples/100);
+
    for(int i=0;i<nSamples;i++)
    {
+     if(i==floor(i/progressTicker)*progressTicker) Rcout << ".";
      data[i][0]=samples(i,0); //prev
      data[i][1]=samples(i,1); //sp
      data[i][2]=samples(i,2); //sp

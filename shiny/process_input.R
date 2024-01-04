@@ -36,9 +36,11 @@ process_input <- function(input)
   }
   global_vars$str_desc <<- paste(global_vars$str_desc, "Sample sizes evaluated (n_stars):", paste0(global_vars$n_stars,collapse=","), "\n")
 
+
+
   if(global_vars$evidence_type=="ind_beta")
   {
-    global_vars$str_desc <<- paste(global_vars$str_desc, "Evidence type: independent Beta distributions.(",global_vars$evidence_type,")\n")
+    global_vars$str_desc <<- paste0(global_vars$str_desc, "Evidence type: independent Beta distributions (",global_vars$evidence_type,").\n")
 
     if(is.null(global_vars$n_sim_inner) | global_vars$n_sim_inner=="")
     {
@@ -66,6 +68,8 @@ process_input <- function(input)
   }
   if(global_vars$evidence_type=="prev_cs_A_B")
   {
+    global_vars$str_desc <<- paste0(global_vars$str_desc, "Evidence type: Prevalence, c-statistic, and calibration (",global_vars$evidence_type,").\n")
+
     if(is.null(global_vars$n_sim_outer) | global_vars$n_sim_outer=="")
     {
       global_vars$str_val <<- paste(global_vars$str_val,"The number of outer simulations need to be specified.")
@@ -82,6 +86,8 @@ process_input <- function(input)
       global_vars$str_val <<- paste(global_vars$str_val,"The number of inner simulations need to be specified.")
       return(F)
     }
+
+
     if(global_vars$n_sim_inner>1000)
     {
       global_vars$str_val <<- paste(global_vars$str_val,"Number of inner simulations for this type cannot be more than 1000. For larger values please use the R package locally.")
@@ -95,6 +101,13 @@ process_input <- function(input)
       B=c(mean=input$cal_slope/1, sd=input$cal_slope_sd/1)
     )
   }
+  if(global_vars$evidence_type=="sample")
+  {
+    global_vars$str_val <<- "This type of evidence synthesis is not yet implemented"
+    res <- F
+    evidence <- list()
+  }
+
   global_vars$evidence<<-evidence
 
   res

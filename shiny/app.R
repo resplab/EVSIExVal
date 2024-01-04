@@ -8,6 +8,7 @@
 #
 
 library(shiny)
+library(shinyjs)
 library(evsiexval)
 
 source("process_input.R")
@@ -20,6 +21,20 @@ make95CrIFromBeta <- function(a,b)
          round(qbeta(0.975,a,b)*100,1),"%"
   )
 }
+
+
+withConsoleRedirect <- function(containerId, expr) {
+  # Change type="output" to type="message" to catch stderr
+  # (messages, warnings, and errors) instead of stdout.
+  txt <- capture.output(results <- expr, type = "output")
+  if (length(txt) > 0) {
+    insertUI(paste0("#", containerId), where = "beforeEnd",
+             ui = paste0(txt, "\n", collapse = "")
+    )
+  }
+  results
+}
+
 
 
 # Define UI for application that draws a histogram
@@ -110,7 +125,8 @@ ui <- fluidPage(
       ),
       tabPanel("Results",
         actionButton("run1", "Run the analysis"), actionButton("clear_results", "Clear results"),
-        uiOutput("results1")
+        uiOutput("results1"),
+        pre(id="console","")
       )
     ),
 )
@@ -189,6 +205,7 @@ server <- function(input, output)
     choice <- substring(input$evidence_type,1,1)
     output$n_sim_outer_note <- renderText("")
     output$evidence_inputs <- renderUI("")
+
     if(choice=="0")
     {
       global_vars$evidence_type <<- ""
@@ -219,7 +236,7 @@ server <- function(input, output)
         a <- input$prev/100*input$prev_n
         b <- input$prev_n-input$prev/100*input$prev_n
         output$prev_dist <- renderText(paste0("prev~Beta(", a,",", b ,") | ", make95CrIFromBeta(a,b)))
-      }, autoDestroy=T)
+      })
       observeEvent(input$se, {
         a <- input$se/100*input$se_n
         b <- input$se_n-input$se/100*input$se_n
@@ -325,18 +342,25 @@ server <- function(input, output)
   })
 
 
-
   observeEvent(input$evsi_run, {
+
+    # input_list <- reactiveValuesToList(input)
+    # toggle_inputs(input_list,F,F)
+    showModal(modalDialog("Computation in progress... Please do not change any input values before the computation is completed."))
     if(global_vars$evidence_type=="ind_beta")
     {
-      VoI <- EVSI_ag(global_vars$evidence, global_vars$z, n_sim=global_vars$n_sim_inner, future_sample_sizes=global_vars$n_stars[-1])
+      withConsoleRedirect( "console", {
+        VoI <- EVSI_ag(global_vars$evidence, global_vars$z, n_sim=global_vars$n_sim_inner, future_sample_sizes=global_vars$n_stars[-1])
+      })
     }
     if(global_vars$evidence_type=="prev_cs_A_B")
     {
-      withProgress({
+      withConsoleRedirect( "console", {
         VoI <- EVSI_gf(global_vars$sample[,c('prev','se','sp')], global_vars$z, n_sim=global_vars$n_sim_inner, future_sample_sizes=global_vars$n_stars[-1])
-      }, message="Computing")
+      })
     }
+    removeModal()
+    # toggle_inputs(input_list,T,F)
 
     EVPI <- VoI$EVPI
     EVSIs <- c(0,VoI$EVSI)
@@ -376,6 +400,26 @@ server <- function(input, output)
     global_vars$result_level <<- 2
   })
 }
+
+
+
+toggle_inputs <- function(input_list,enable_inputs=T,only_buttons=FALSE)
+{
+  # Subset if only_buttons is TRUE.
+  browser()
+
+  if(only_buttons){
+    buttons <- which(sapply(input_list,function(x) {any(grepl('Button',attr(x,"class")))}))
+    input_list = input_list[buttons]
+  }
+
+  # Toggle elements
+  for(x in names(input_list))
+    if(enable_inputs){
+      shinyjs::enable(x)} else {
+        shinyjs::disable(x) }
+}
+
 
 
 shinyApp(ui = ui, server = server)

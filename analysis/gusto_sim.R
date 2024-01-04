@@ -72,7 +72,26 @@ for(i in 2:length(res_cl))
 
 out$sim_results <- EVSIs
 
-x <- sqldf("SELECT COUNT(*) AS N, val_size, z, AVG(EVPI) AS evpi, AVG(EVSI1) AS val1, AVG(EVSI2) AS val2, AVG(EVSI3) AS val3, AVG(EVSI4) AS val4, AVG(EVSI5) AS val5, AVG(EVSI6) AS val6 FROM EVSIs GROUP BY val_size, z")
+y <- sqldf("SELECT * FROM EVSIs ORDER BY z, val_size")
+y$i <-0
+cur_z <- 0; cur_val_size <-0
+for(i in 1:nrow(y))
+{
+  if(y$z[i]==cur_z & y$val_size[i]==cur_val_size)
+  {
+    index <- index+1
+  }
+  else
+  {
+    index <- 1
+    cur_z <- y$z[i]
+    cur_val_size <- y$val_size[i]
+  }
+  y$i[i] <- index
+}
+y <- y[-which(y$i>100),]
+
+x <- sqldf("SELECT COUNT(*) AS N, val_size, z, AVG(EVPI) AS evpi, AVG(EVSI1) AS val1, AVG(EVSI2) AS val2, AVG(EVSI3) AS val3, AVG(EVSI4) AS val4, AVG(EVSI5) AS val5, AVG(EVSI6) AS val6 FROM y GROUP BY val_size, z")
 
 z <- 0.01
 y <- x[which(x$z==z),]
@@ -126,7 +145,7 @@ lines(c(0,fss), c(0,k*y[4,]), type='l', ylim=c(0,max(k*y[4,])), col='orange', lw
 lines(c(0,fss), c(0,k*y[5,]), type='l', ylim=c(0,max(k*y[5,])), col='darkred', lwd=1)
 z <- 0.01
 y <- x[which(x$z==z),6:9]
-lines(c(0,fss), c(0,k*y[2,]), type='l', ylim=c(0,max(k*y[1,])), col='black', lwd=1, lty=2)
+lines(c(0,fss), c(0,k*y[1,]), type='l', ylim=c(0,max(k*y[1,])), col='black', lwd=1, lty=2)
 lines(c(0,fss), c(0,k*y[2,]), type='l', ylim=c(0,max(k*y[2,])), col='blue', lwd=1, lty=2)
 lines(c(0,fss), c(0,k*y[3,]), type='l', ylim=c(0,max(k*y[3,])), col='darkgreen', lwd=1, lty=2)
 lines(c(0,fss), c(0,k*y[4,]), type='l', ylim=c(0,max(k*y[4,])), col='orange', lwd=1, lty=2)
