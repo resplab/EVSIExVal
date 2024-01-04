@@ -5,9 +5,9 @@ source("include.R")
 settings <- list(
   name="case_study",
   output_dir="M:/Projects/2023/Project.EVSIexval/Output/Results/WIP/",
-  future_sample_sizes=c(500, 1000, 2000, 4000, 8000, 16000),
-  val_sample_sizes=c(500, 1000, 2000, 4000, 8000, Inf),
-  n_sim=10, #This one is the outer sim. Inner sim numbers are EVSI() default (10^6)
+  future_sample_sizes=c(500, 1000, 2000, 4000),
+  val_sample_sizes=c(500, 1000, 2000, 4000, 8000),
+  n_sim=100, #This one is the outer sim. Inner sim numbers are EVSI() default (10^6)
   zs=c(0.01,0.02)
 )
 
@@ -46,7 +46,11 @@ sim_EVSI<- function(model, big_val_data, settings)
       for(z in settings$zs)
       {
         cat(i, sample_size, z)
-        tmp <- EVSI(model, tmp_data, z, settings$future_sample_sizes)
+        evidence <- list(prev=c(sum(tmp_data$Y), nrow(tmp_data)-sum(tmp_data$Y)),
+                         se=c(sum(tmp_data$Y*(tmp_data$pi>=z)),sum(tmp_data$Y)-sum(tmp_data$Y*(tmp_data$pi>=z))),
+                         sp=c(sum((1-tmp_data$Y)*(tmp_data$pi<z)),sum(1-tmp_data$Y)-sum((1-tmp_data$Y)*(tmp_data$pi<z)))
+        )
+        tmp <- evsiexval::EVSI_ag(evidence, z, settings$future_sample_sizes)
         EVSIs <- rbind(EVSIs, c(val_size=sample_size, z=z, unlist(tmp)))
       }
     }
@@ -56,8 +60,7 @@ sim_EVSI<- function(model, big_val_data, settings)
 }
 
 
-
-clusterExport(cl,list('EVSI'))
+#clusterExport(cl,list('EVSI'))
 
 res_cl <- clusterCall(cl, sim_EVSI, model=model, big_val_data=data_us, settings=cl_settings)
 
@@ -71,6 +74,7 @@ for(i in 2:length(res_cl))
 }
 
 out$sim_results <- EVSIs
+
 
 y <- sqldf("SELECT * FROM EVSIs ORDER BY z, val_size")
 y$i <-0
@@ -89,53 +93,21 @@ for(i in 1:nrow(y))
   }
   y$i[i] <- index
 }
-y <- y[-which(y$i>100),]
-
-x <- sqldf("SELECT COUNT(*) AS N, val_size, z, AVG(EVPI) AS evpi, AVG(EVSI1) AS val1, AVG(EVSI2) AS val2, AVG(EVSI3) AS val3, AVG(EVSI4) AS val4, AVG(EVSI5) AS val5, AVG(EVSI6) AS val6 FROM y GROUP BY val_size, z")
-
-z <- 0.01
-y <- x[which(x$z==z),]
-pdf(paste0(settings$output_dir,"EVSI_sim_",z,".pdf"), width=7, height=5)
-par(las=2)
-plot(c(0,settings$future_sample_sizes), c(0,y[1,5:10]), type='l', ylim=c(0,max(y[,5:10])), col='black', xlab="Future sample size", ylab="EVSI", lwd=2, xaxt = "n")
-axis(1, at=settings$future_sample_sizes, labels=settings$future_sample_sizes)
-lines(c(0,settings$future_sample_sizes), c(0,y[2,5:10]), type='l', ylim=c(0,max(y[,5:10])), col='blue', lwd=2, lty=5)
-lines(c(0,settings$future_sample_sizes), c(0,y[3,5:10]), type='l', ylim=c(0,max(y[,5:10])), col='darkgreen', lwd=2, lty=2)
-lines(c(0,settings$future_sample_sizes), c(0,y[4,5:10]), type='l', ylim=c(0,max(y[,5:10])), col='orange', lwd=2, lty=4)
-lines(c(0,settings$future_sample_sizes), c(0,y[5,5:10]), type='l', ylim=c(0,max(y[,5:10])), col='darkred', lwd=2, lty=6)
-lines(c(0,settings$future_sample_sizes), c(0,y[6,5:10]), type='l', ylim=c(0,max(y[,6:10])), col='red', lwd=2, lty=3)
-#legend(-700, 1.03*max(y[,5:10]), legend=c("Development sample size\n", "500","1000","2000","4000","8000", paste0("n=",nrow(data_us))), lty=c(0, 1,5,2,4,6,3), col=c('white','black','blue','darkgreen','orange','darkred','red'), lwd=1, cex=0.6, bty="n")
-legend(-700, 1.03*max(y[,5:10]), legend=c("Development sample sizes\n", "500","1000","2000","4000","8000"), lty=c(0,1,5,2,4,6), col=c('white','black','blue','darkgreen','orange','darkred'), lwd=1, cex=0.6, bty="n")
-dev.off()
+if(max(y$i)>settings$n_sim) y <- y[-which(y$i>settings$n_sim),]
 
 
-z <- 0.02
-y <- x[which(x$z==z),]
-pdf(paste0(settings$output_dir,"EVSI_sim_",z,".pdf"), width=7, height=5)
-par(las=2)
-plot(c(0,settings$future_sample_sizes), c(0,y[1,5:10]), type='l', ylim=c(0,max(y[,5:10])), col='black', xlab="Future sample size", ylab="EVSI", lwd=2, xaxt = "n")
-axis(1, at=settings$future_sample_sizes, labels=settings$future_sample_sizes)
-lines(c(0,settings$future_sample_sizes), c(0,y[2,5:10]), type='l', ylim=c(0,max(y[,5:10])), col='blue', lwd=2, lty=5)
-lines(c(0,settings$future_sample_sizes), c(0,y[3,5:10]), type='l', ylim=c(0,max(y[,5:10])), col='darkgreen', lwd=2, lty=2)
-lines(c(0,settings$future_sample_sizes), c(0,y[4,5:10]), type='l', ylim=c(0,max(y[,5:10])), col='orange', lwd=2, lty=4)
-lines(c(0,settings$future_sample_sizes), c(0,y[5,5:10]), type='l', ylim=c(0,max(y[,5:10])), col='darkred', lwd=2, lty=6)
-lines(c(0,settings$future_sample_sizes), c(0,y[6,5:10]), type='l', ylim=c(0,max(y[,6:10])), col='red', lwd=2, lty=3)
-#legend(-700, 1.03*max(y[,5:10]), legend=c("Development sample size\n", "500","1000","2000","4000","8000", paste0("n=",nrow(data_us))), lty=c(0, 1,5,2,4,6,3), col=c('white','black','blue','darkgreen','orange','darkred','red'), lwd=1, cex=0.6, bty="n")
-legend(-700, 1.03*max(y[,5:10]), legend=c("Development sample size\n", "500","1000","2000","4000","8000"), lty=c(0,1,5,2,4,6), col=c('white','black','blue','darkgreen','orange','darkred'), lwd=1, cex=0.6, bty="n")
-dev.off()
-
-
+EVSIs <- y
 
 
 ###New graph (2023.12.29)
-fss <- settings$future_sample_sizes[1:4] #AV doesn't like anything above 4000
-x <- sqldf("SELECT COUNT(*) AS N, val_size, z, AVG(EVPI) AS evpi, AVG(EVSI1) AS val1, AVG(EVSI2) AS val2, AVG(EVSI3) AS val3, AVG(EVSI4) AS val4, AVG(EVSI5) AS val5, AVG(EVSI6) AS val6 FROM EVSIs GROUP BY val_size, z")
+fss <- settings$future_sample_sizes
+x <- sqldf("SELECT COUNT(*) AS N, val_size, z, AVG(EVPI) AS evpi, AVG(EVSI1) AS val1, AVG(EVSI2) AS val2, AVG(EVSI3) AS val3, AVG(EVSI4) AS val4 FROM EVSIs GROUP BY val_size, z")
 k <- 1000
 par(mar=c(4, 4, 4, 1), xpd=TRUE)
 
 pdf(paste0(settings$output_dir,"EVSI_sim_v2.pdf"), width=7, height=5)
 z <- 0.02
-y <- x[which(x$z==z),6:9]
+y <- x[which(x$z==z),5:8]
 max_y <- max(k*y[1,])
 plot(c(0,fss), c(0,k*y[1,]), type='l', ylim=c(0,max_y), col='black', xlab="Future sample size", ylab="EVSI (X1000)", lwd=1, xaxt = "n")
 axis(1, at=c(0,fss), labels=c(0,fss))
@@ -144,13 +116,13 @@ lines(c(0,fss), c(0,k*y[3,]), type='l', ylim=c(0,max(k*y[3,])), col='darkgreen',
 lines(c(0,fss), c(0,k*y[4,]), type='l', ylim=c(0,max(k*y[4,])), col='orange', lwd=1)
 lines(c(0,fss), c(0,k*y[5,]), type='l', ylim=c(0,max(k*y[5,])), col='darkred', lwd=1)
 z <- 0.01
-y <- x[which(x$z==z),6:9]
+y <- x[which(x$z==z),5:8]
 lines(c(0,fss), c(0,k*y[1,]), type='l', ylim=c(0,max(k*y[1,])), col='black', lwd=1, lty=2)
 lines(c(0,fss), c(0,k*y[2,]), type='l', ylim=c(0,max(k*y[2,])), col='blue', lwd=1, lty=2)
 lines(c(0,fss), c(0,k*y[3,]), type='l', ylim=c(0,max(k*y[3,])), col='darkgreen', lwd=1, lty=2)
 lines(c(0,fss), c(0,k*y[4,]), type='l', ylim=c(0,max(k*y[4,])), col='orange', lwd=1, lty=2)
 lines(c(0,fss), c(0,k*y[5,]), type='l', ylim=c(0,max(k*y[5,])), col='darkred', lwd=1, lty=2)
-legend("topleft", inset=c(0,0), horiz=F,  legend=c("Development sample size", "500","1000","2000","4000","8000"), lty=c(0,1,1,1,1,1), col=c('white','black','blue','darkgreen','orange','darkred'), lwd=1, cex=0.6, bty="n")
+legend("topleft", inset=c(0,0), horiz=F,  legend=c("Current sample size (n)", "500","1000","2000","4000","8000"), lty=c(0,1,1,1,1,1), col=c('white','black','blue','darkgreen','orange','darkred'), lwd=1, cex=0.6, bty="n")
 legend(x=1000, y=max_y*1.04, horiz=T,  legend=c("Threshold (z)", "0.01","0.02"), lty=c(0,2,1), col=c('white','black','black'), lwd=1, cex=0.6, bty="n")
 dev.off()
 
@@ -208,6 +180,40 @@ title(paste("Development sample size:",dev_n))
 
 
 
+
+#Older graph
+x <- sqldf("SELECT COUNT(*) AS N, val_size, z, AVG(EVPI) AS evpi, AVG(EVSI1) AS val1, AVG(EVSI2) AS val2, AVG(EVSI3) AS val3, AVG(EVSI4) AS val4, AVG(EVSI5) AS val5, AVG(EVSI6) AS val6 FROM y GROUP BY val_size, z")
+
+z <- 0.01
+y <- x[which(x$z==z),]
+pdf(paste0(settings$output_dir,"EVSI_sim_",z,".pdf"), width=7, height=5)
+par(las=2)
+plot(c(0,settings$future_sample_sizes), c(0,y[1,5:10]), type='l', ylim=c(0,max(y[,5:10])), col='black', xlab="Future sample size", ylab="EVSI", lwd=2, xaxt = "n")
+axis(1, at=settings$future_sample_sizes, labels=settings$future_sample_sizes)
+lines(c(0,settings$future_sample_sizes), c(0,y[2,5:10]), type='l', ylim=c(0,max(y[,5:10])), col='blue', lwd=2, lty=5)
+lines(c(0,settings$future_sample_sizes), c(0,y[3,5:10]), type='l', ylim=c(0,max(y[,5:10])), col='darkgreen', lwd=2, lty=2)
+lines(c(0,settings$future_sample_sizes), c(0,y[4,5:10]), type='l', ylim=c(0,max(y[,5:10])), col='orange', lwd=2, lty=4)
+lines(c(0,settings$future_sample_sizes), c(0,y[5,5:10]), type='l', ylim=c(0,max(y[,5:10])), col='darkred', lwd=2, lty=6)
+lines(c(0,settings$future_sample_sizes), c(0,y[6,5:10]), type='l', ylim=c(0,max(y[,6:10])), col='red', lwd=2, lty=3)
+#legend(-700, 1.03*max(y[,5:10]), legend=c("Development sample size\n", "500","1000","2000","4000","8000", paste0("n=",nrow(data_us))), lty=c(0, 1,5,2,4,6,3), col=c('white','black','blue','darkgreen','orange','darkred','red'), lwd=1, cex=0.6, bty="n")
+legend(-700, 1.03*max(y[,5:10]), legend=c("Development sample sizes\n", "500","1000","2000","4000","8000"), lty=c(0,1,5,2,4,6), col=c('white','black','blue','darkgreen','orange','darkred'), lwd=1, cex=0.6, bty="n")
+dev.off()
+
+
+z <- 0.02
+y <- x[which(x$z==z),]
+pdf(paste0(settings$output_dir,"EVSI_sim_",z,".pdf"), width=7, height=5)
+par(las=2)
+plot(c(0,settings$future_sample_sizes), c(0,y[1,5:10]), type='l', ylim=c(0,max(y[,5:10])), col='black', xlab="Future sample size", ylab="EVSI", lwd=2, xaxt = "n")
+axis(1, at=settings$future_sample_sizes, labels=settings$future_sample_sizes)
+lines(c(0,settings$future_sample_sizes), c(0,y[2,5:10]), type='l', ylim=c(0,max(y[,5:10])), col='blue', lwd=2, lty=5)
+lines(c(0,settings$future_sample_sizes), c(0,y[3,5:10]), type='l', ylim=c(0,max(y[,5:10])), col='darkgreen', lwd=2, lty=2)
+lines(c(0,settings$future_sample_sizes), c(0,y[4,5:10]), type='l', ylim=c(0,max(y[,5:10])), col='orange', lwd=2, lty=4)
+lines(c(0,settings$future_sample_sizes), c(0,y[5,5:10]), type='l', ylim=c(0,max(y[,5:10])), col='darkred', lwd=2, lty=6)
+lines(c(0,settings$future_sample_sizes), c(0,y[6,5:10]), type='l', ylim=c(0,max(y[,6:10])), col='red', lwd=2, lty=3)
+#legend(-700, 1.03*max(y[,5:10]), legend=c("Development sample size\n", "500","1000","2000","4000","8000", paste0("n=",nrow(data_us))), lty=c(0, 1,5,2,4,6,3), col=c('white','black','blue','darkgreen','orange','darkred','red'), lwd=1, cex=0.6, bty="n")
+legend(-700, 1.03*max(y[,5:10]), legend=c("Development sample size\n", "500","1000","2000","4000","8000"), lty=c(0,1,5,2,4,6), col=c('white','black','blue','darkgreen','orange','darkred'), lwd=1, cex=0.6, bty="n")
+dev.off()
 
 
 
