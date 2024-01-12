@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 This document is supplementary material for the manuscript entitled "Expected value of sample information calculations for external validation of clinical prediction models". The purpose of this document is to demonstrates how the proposed algorithms for EVSI computations can be programmed in R.
 
-Please note that the implementations here are for helping the reader better understand the computation algorithms. The implementations are not optimized for speed and computational efficiency. For such implementations please use the open-source evsiexval package [https://github.com/resplab/EVSIExVal](https://github.com/resplab/EVSIExVal). Correspondingly, simulations are run with lower numbers than in the paper.
+Please note that the implementations here are for illustrative purposes and are not optimized for speed and computational efficiency. Correspondingly, simulations are run with lower numbers than in the paper. For more efficient implementations please use the open-source evsiexval package [https://github.com/resplab/EVSIExVal](https://github.com/resplab/EVSIExVal). 
 
 *The code chunks below with default values should take in total 1-10 minutes to run on an average PC.
 
@@ -57,9 +57,9 @@ n <- nrow(val_data)
 \pagebreak
 
 ### Bootstrap-based algorithm
-For binary outcomes in the absence of censoring and predictors with missing values, this algorithm will converge to the beta-binomial algorithm (which is much faster). The main utility of the algorithm would be in dealing with other types of outcomes or when there is non-ignoble amount of missingness in the data.
+For binary outcomes in the absence of censoring and predictors with missing values, this algorithm will converge to the beta-binomial algorithm (which is much faster). The main utility of the algorithm would be in dealing with other types of outcomes or when there is non-ignorable amount of missingness.
 
-Note that in this two-level resampling algorithm, we implement bootstrapping via assigning weights to the observations, instead of creating resamples datasets (e.g., via the sample() function). The latter can involve memory allocation which will slow down the process. Instead, both levels of resampling are represented by assigning weights to each observation.
+Note that in this two-level resampling algorithm, we implement bootstrapping via assigning weights to the observations, instead of creating resampled datasets. The latter can involve memory allocation which will slow down the process. 
 
 
 ```{r}
@@ -140,9 +140,7 @@ lines(c(0,max(future_sample_sizes)),c(EVPI,EVPI),type='l',col='gray')
 \pagebreak
 
 ### Beta-binomial method
-For binary outcomes, the bootstrapped-based algorithm can be done in aggregate due to the beta-binomial conjugacy. 
-
-Instead of raw data, this algorithm works with aggregate frequencies. As stated in the paper, the sample can be summarized by its sample size as well as outcome prevalence, sensitivity, and specificty, which all have beta distirbutions.
+For binary outcomes, the bootstrapped-based algorithm can be done in aggregate due to the beta-binomial conjugacy. As stated in the paper, the sample can be summarized by its sample size as well as outcome prevalence, sensitivity, and specificity, with likelihood function from the data being a product of independent beta PDFs for prevalence, sensitivity, and specificity. Calculations can thus be performed in aggregate. 
 
 The implementation of this code in the evsiexval package is vectorized. Unvectorized R code is provided here because it is easier to process.
 
@@ -165,7 +163,7 @@ print(paste("alpha and beta parameters of prev, se, and sp (in order):",
             paste(evidence, collapse=" | ")))
 ```
 
-NOTE: To keep the results consistent with the bootstrap method, we are assigning Beta(0.0) to all three parameters (which is also the implied prior in the Bayesian bootstrap). Note that the results in the paper are based on Beta(1,1) priors.
+NOTE: To keep the results consistent with the bootstrap method, we are assigning Beta(0,0) to all three parameters (which is the implied prior in the Bayesian bootstrap). Note that the results in the paper are based on Beta(1,1) priors.
 
 ```{r}
 #Moving from evidence d to posterior P(theta|d), assuming prior Beta(0,0) on all parameters. 
@@ -234,13 +232,13 @@ lines(c(0,max(future_sample_sizes)),c(EVPI,EVPI),type='l',col='gray')
 \pagebreak
 
 ### Generic, sample-based method
-This algorithm is a general one that does not require the current information P(theta|d) to be in an expressible mathematical form. Instead, it requires a sample from the (joint) posterior distribution of (prev, se, sp). This is particularly relevant for situations where we are using MCMC methods to generate posterior samples from a complex model (e.g., a random-effects model for joint inference on sensitivity and specificity of the model at the threshold of interest).
+This algorithm is a general one that does not require the current information $P(\theta|d)$ to be in an expressible mathematical form. Instead, it requires a sample from the (joint) posterior distribution of (prev, se, sp). This is particularly relevant for situations where we are using MCMC methods to generate posterior samples from a complex model (e.g., a random-effects model for joint inference on sensitivity and specificity of the model at the threshold of interest).
 
 This algorithm has a complexity of $O(N_{out}.N_{in}.M)$ with  terms representing, respectively, the number of outer and inner simulations and the size of the sample. This can quickly become overwhelming for R. The evsiexval package implements this algorithm in C++ (which is used for the results reported in the paper). 
 
-The R code below is inevitably vectorized to avoid very long times, and the number of inner simulations is kept at 1000 and the sample at 100. The sample of 100 rows is not generally sufficient and below results are only for demonstrating purposes. 
+The R code below is inevitably vectorized to avoid long computation times, and the number of inner simulations is kept at 1000 and the sample size at 100. The latter is not generally sufficient for a real analysis. 
 
-Instead of an outer simulation that samples from each observation, we are looping over the 100 observations. This removes the unnecessary Monte Carlo error for the outer Monte Carlo simulation. However, this will not be practical if the sample from the posterior distribution is large.
+Instead of an outer simulation that samples from each observation, we are looping over the 100 observations (in vectorized code). i.e., $N_{out}$=100. This removes the unnecessary Monte Carlo error for the outer simulation. However, this will not be practical if the sample from the posterior distribution is large.
 
 
 We start by generating M samples from {prev, se, sp}
@@ -267,9 +265,10 @@ EVPI <- mean(apply(NBt,1,max)) - max(colMeans(NBt))
 #Replicating the sample n_sim times such that we can vectorize the calculations
 #WARNING: This part is RAM-intensive as it creates matrices with M*n_sim rows
 #We are looping over the M samples instead of randomly drawing from them
-#This stratified sampling removes Monte Carlo error due to the outer simulatio loop
+#This stratified sampling removes Monte Carlo error due to the outer simulation loop
 #If M is large and this will not be practical,  
-#in which case modify this part to sample from a smaller subset of the sample
+#in which case create a new sample that is a subset of
+# the original sample before the below line.
 S <- do.call(rbind, replicate(n_sim, samples, simplify=FALSE)) 
 
 EVSI <- double(length(future_sample_sizes))

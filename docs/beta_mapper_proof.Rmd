@@ -1,0 +1,45 @@
+---
+title: "Beta mapper proof"
+author: "Mohsen Sadatsafavi"
+date: "2024-01-10"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Lemma: the combination of expected value and c-statistic uniquly identifies a beta distirbution
+
+## Proof
+Let $\mu$ and $c$ be, respectively, the expected value and the c-statistic of a random variable (RV) $Beta(\alpha,\beta)$ distribution, with $\mu=\mathbf{E}\pi=\frac{\alpha}{\alpha+\beta}$ and $c=P(\pi_1 > \pi_0 | Y_1 > Y_0)$ where $\pi_0, \pi_1$ are iid RVs all with $Beta(\alpha,\beta)$ distribution, and $Y_0, Y_1$ are Bernoulli RVs with oribabilities $\pi_0$ and $\pi_1$, respectively. We shall prove a unique $\alpha, \beta$ solution exists for a given $\mu$ and $c$. 
+
+Noting that $m=\frac{\alpha}{\alpha+\beta}$, we remove $\beta$ as $\beta=\alpha\frac{\mu}{1-\mu}$.
+
+Next, we apply Bayes' theorem to the definition of $c$:
+
+$c=P(Y_1 > Y_0 | \pi_1 > \pi_0)\frac{P(\pi_1 > \pi_0)}{P(Y_1 > Y_0)}=P(Y_1=1, Y_0=0 | \pi_1 > \pi_0)\frac{0.5}{P(Y_1=1,Y_0=0)}=\frac{\mathbf{E}\pi_M(1-\mathbf{E}\pi_m)}{2\mu(1-\mu)}$,
+
+where $\pi_M$ and $\pi_m$ are, respectively, the maximum and minimum of a pair of independent RVs from $Beta(\alpha,\beta)$.
+
+The goal is achieved by showing that $\mathbf{E}\pi_M$ is monotonically decreasing as a function of $\alpha$. By symmetry, the opposite can be proven for $\pi_m$.
+
+$\mathbf{E}\pi_M=\int_0^1 2xf(x;\alpha)F(x;\alpha).dx$, with f() and F(), respectively, the PDF and CDF of the $Beta(\alpha,\alpha\frac{\mu}{1-\mu})$. Integrating by parts (with $u'=2xf(x;\alpha)F(x;\alpha)$ and $v=x$), we have
+
+$\mathbf{E}\pi_M=xF^2(x;\alpha)|_0^1-\int_0^1F^2(x;\alpha).dx=1-\int_0^1F^2(x;\alpha).dx$
+
+So the task in front of us can be formulated as showing that $\int_0^1F^2(x;\alpha).dx$ is monotonic with respect to $\alpha$. 
+
+To proceed, we take advantage of a particular property of the beta distribution: that the integral of its CDF is equal to one minus its expected value:
+
+Proposition: $\int_0^1 F(x).dx = xF(x) + \int_0^1 x f(x).dx = [1F(1)-0F(0)] - \mu = 1-\mu$. 
+
+Let $f_0$ and $f_1$ be PDF of two beta distributions with mean $\mu$ but with two different $\alpha_0$ and $\alpha_1$ parameters, and $\alpha_1>\alpha_0$. We note that around $x=0$, the CDF $F_0$ rises faster than $F_1$ (proof?). Given the proposition, the two CDFs, being smooth and monotonical, must cross. However, they can only cross once, given the identifiability of beta distribution by a pair of quantiles proven by [Shih et al](https://www.tandfonline.com/doi/full/10.1080/00949655.2014.914513) (if the two CDFs crosses 2 or  more times, any pairs of quantiles defined by crossing points will fail to identify uniquely a beta distribution).
+
+Let $z$ be the unique crossing point of the two CDFs (where $F_0(z)=F_1(z)$) be the value of these CDFs at this point.
+
+$\int_0^1 (F_0^2(x)-F_1^2(x)).dx=\int_0^z (F_0^2(x)-F_1^2(x)).dx+\int_z^1 (F_0^2(x)-F_1^2(x)).dx=\int_0^z (F_0(x)-F_1(x))(F_0(x)+F_1(x)).dx+\int_z^1 (F_0(x)-F_1(x))(F_0(x)+F_1(x)).dx$.
+
+In the left region ($x\in[0,z]$), $F_0(x)-F_1(x)\ge0$, and $0<F_0(x)+F_1(x)\le F_0(z)+F_1(z)$. As such, replacing $F_0(x)+F_1(x)$ by the larger positive quantity $F_0(z)+F_1(z)$ will increase this term. As well, in the right region ($x\in[z,1]$), $F_0(x)-F_1(x)\le 0$, and $0<F_0(x)+F_1(x) \le F_0(z)+F_1(z)$. As such, replacing $F_0(x)+F_1(x)$ by the smaller positive quantity $F_0(z)+F_1(z)$ will also increase this term. Therefore we have
+
+$\int_0^1 (F_0^2(x)-F_1^2(x)).dx \le \int_0^z (F_0(x)-F_1(x))(F_0(z)+F_1(z)).dx+\int_z^1 (F_0(x)-F_1(x))(F_0(z)+F_1(z)).dx$, and the term on the right hand side is zero because of the proposition. Therefore, $\int_0^1 (F_0^2(x)-F_1^2(x)).dx \le 0$, establishing the results.

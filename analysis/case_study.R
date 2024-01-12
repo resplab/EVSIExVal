@@ -13,6 +13,7 @@ settings <- list(
   zs=c(0.01,0.02)
 )
 
+#out <- readRDS(paste0(settings$output_dir, "case_study.RDS"))
 out <- list(settings=settings)
 out$model_coeffs <- coefficients(model)
 
@@ -109,6 +110,7 @@ NBh_all <- colMeans(bs_NBh_all)
 NBh_model <- colMeans(bs_NBh_model)
 
 max_y <- max(0,NBh_all,NBh_model)
+min_y <- min(0,NBh_all,NBh_model)
 
 pdf(paste0(settings$output_dir,"DCA.pdf"), width=6, height=5)
 plot(zs, NBh_all, col='darkgray', type='l', lwd=2, ylim=c(0,max_y), xlab="Risk threshold (z)", ylab="Net benefit")
@@ -126,7 +128,7 @@ dev.off()
 
 
 pdf(paste0(settings$output_dir,"dNB.pdf"), width=6, height=5)
-plot(zs, NBh_model - pmax(NBh_all,0), col='blue4', type='l', lwd=2, ylim=c(0,max_y), xlab="Risk threshold", ylab="Net benefit")
+plot(zs, NBh_model - pmax(NBh_all,0), col='blue4', type='l', lwd=2, ylim=c(min_y,max_y), xlab="Risk threshold (z)", ylab="Net benefit")
 ci <- apply(bs_NBh_model - pmax(bs_NBh_all,0),MARGIN = 2,FUN = quantile, c(0.025,0.975))
 lines(zs,ci[1,], type='l', col='gray', lt=2)
 lines(zs,ci[2,], type='l', col='gray', lt=2)
@@ -166,6 +168,7 @@ dev.off()
 
 #Scaled EVPI curve
 pdf(paste0(settings$output_dir,"scaled_EVPI.pdf"))
+par(mar=c(4, 4, 0, 3), xpd=TRUE)
 df <- EVPIs[which(EVPIs$val_size==settings$val_sample_size),]
 scale <- 1
 max_y <- df$EVPI/scale*1.1
@@ -173,6 +176,7 @@ plot(zs, df$EVPI, type='l', xlab='Risk threshold (z)', ylab='EVPI', col='blue', 
 #title(paste(df$val_size, z))
 y2 <- pretty(c(0,800000*df$EVPI))
 axis(4, at=y2/800000, labels=y2)
+mtext("Population EVPI", side=4, line=2)
 dev.off()
 
 
@@ -223,30 +227,48 @@ for(z in settings$zs)
 z <- 0.02
 sample_size <- 500
 df <- sqldf(paste("SELECT * FROM EVSIs WHERE z=",z," AND val_size=",sample_size))
+
+pdf(paste0(settings$output_dir,"scaled_EVSI_",sample_size,"_",z,".pdf"))
+
 scale <- 1 #df$EVPI
 max_y <- df$EVPI/scale*1.1
-pdf(paste0(settings$output_dir,"scaled_EVSI_",sample_size,"_",z,".pdf"))
-plot(c(0,settings$future_sample_sizes), c(0,unlist(df[1,evsi_cols]))/scale, type='l', ylim=c(0,max_y), xlab="Future sample size", ylab="EVSI", col='red')
+par(mar=c(4, 4, 0, 3), xpd=TRUE)
+plot(c(0,settings$future_sample_sizes), c(0,unlist(df[1,evsi_cols]))/scale,
+     type='l', ylim=c(0,max_y),
+     xlab="Future sample size",
+     ylab="EVSI", col='red', lwd=2)
 #title(paste(df$val_size, z))
 lines(c(0,max(settings$future_sample_sizes)), c(df$EVPI/scale,df$EVPI/scale), col='gray')
 y2 <- pretty(c(0,800000*df$EVPI))
 axis(4, at=y2/800000, labels=y2)
+mtext("Population EVSI", side=4, line=2)
+
 dev.off()
 
 
 z <- 0.01
 sample_size <- 500
 df <- sqldf(paste("SELECT * FROM EVSIs WHERE z=",z," AND val_size=",sample_size))
+
+pdf(paste0(settings$output_dir,"scaled_EVSI_",sample_size,"_",z,".pdf"))
+
+options(scipen=999) #Prevent Y axis from going scientific
 scale <- 1 #df$EVPI
 max_y <- df$EVPI/scale*1.1
-pdf(paste0(settings$output_dir,"scaled_EVSI_",sample_size,"_",z,".pdf"))
-plot(c(0,settings$future_sample_sizes), c(0,unlist(df[1,evsi_cols]))/scale, type='l', ylim=c(0,max_y), xlab="Future sample size", ylab="EVSI", col='red')
+par(mar=c(4, 4, 0, 3), xpd=TRUE)
+plot(c(0,settings$future_sample_sizes), c(0,unlist(df[1,evsi_cols]))/scale,
+     type='l', ylim=c(0,max_y),
+     xlab="Future sample size",
+     ylab="EVSI", col='red', lwd=2)
 #title(paste(df$val_size, z))
 lines(c(0,max(settings$future_sample_sizes)), c(df$EVPI/scale,df$EVPI/scale), col='gray')
 y2 <- pretty(c(0,800000*df$EVPI))
 axis(4, at=y2/800000, labels=y2)
+mtext("Population EVSI", side=4, line=2)
+
 dev.off()
 
+options(scipen=0)
 
 
 my_colors <- c('blue','red')
