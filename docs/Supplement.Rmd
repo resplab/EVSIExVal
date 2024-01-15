@@ -13,7 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 This document is supplementary material for the manuscript entitled "Expected value of sample information calculations for external validation of clinical prediction models". The purpose of this document is to demonstrates how the proposed algorithms for EVSI computations can be programmed in R.
 
-Please note that the implementations here are for illustrative purposes and are not optimized for speed and computational efficiency. Correspondingly, simulations are run with lower numbers than in the paper. For more efficient implementations please use the open-source evsiexval package [https://github.com/resplab/EVSIExVal](https://github.com/resplab/EVSIExVal). 
+The implementations here are for illustrative purposes and are not optimized for computational efficiency. Correspondingly, simulations are run with lower numbers than in the paper. For more efficient implementations please use the open-source evsiexval package [https://github.com/resplab/EVSIExVal](https://github.com/resplab/EVSIExVal). 
 
 *The code chunks below with default values should take in total 1-10 minutes to run on an average PC.
 
@@ -114,7 +114,8 @@ for(i in 1:n_sim)
     NBw[j] <- NBw[j]+max(c(0,NB1_pooled,NB2_pooled))
     #Note: a variance reduction technique is to use
     #NBw[j] <- NBw[j]+c(0,NB1t,NB2t)[which.max(c(0,NB1_pooled,NB2_pooled))]
-    #This is because th
+    #That is, once the winning strategy after observing D* is determined, 
+    #we pick the true NB of that strategy instead of noisier NB from D*.
   }
 }
 
