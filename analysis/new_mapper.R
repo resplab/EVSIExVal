@@ -72,8 +72,12 @@ integrate(function(x,mu,sigma){x*pdf(x,mu,sigma)},0,1,mu,sigma)$value
 
 #########################################################
 
+logit <- function(x) {log(x/(1-x))}
+expit <- function(x) {1/(1+exp(-x))}
+
+
 m <- 0.4
-c <- 0.7
+c <- 0.8
 
 F1 <- 1-m
 
@@ -83,7 +87,7 @@ F2 <- 1-c(m-0.5+D, m-0.5-D)[1]
 
 pdf <- function(x, mu, sigma) {1/sigma/sqrt(2*pi)/x/(1-x)*exp(-(logit(x)-mu)^2/(2*sigma^2))}
 cdf <- function(x, mu, sigma) {pnorm(logit(x),mu,sigma)}
-cdf2 <- function(x, mu, sigma) {pnorm(logit(x),mu,sigma)^2}
+cdf2 <- function(x, mu, sigma) {cdf(x,mu,sigma)^2}
 
 
 f <- function(x)
@@ -95,7 +99,20 @@ f <- function(x)
 }
 
 
-optim(c(0,1), f)
+res <- optim(c(0,1), f)
 
 
 ###################################################################3
+simulate <- function(type=c('beta','logit-normal','probit-normal'), args=c(1,1), n_sim=10^6)
+{
+  if(type=="logit-normal")
+  {
+    pi <- 1/(1+exp(-rnorm(n_sim,args[1],args[2])))
+    Y <- rbinom(n_sim,1,pi)
+  }
+
+  require(pROC)
+
+  c(m=mean(pi), c=pROC::roc(Y~pi)$auc)
+}
+
