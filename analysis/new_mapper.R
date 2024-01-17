@@ -26,7 +26,7 @@ solve_logitnormal <- function(target=c(m=0.5,c=0.75), init=NULL)
   }
 
   F1 <- 1-m
-  F2 <- 1- (2*c*m-(2*c-1)*m^2)
+  F2 <- 1-(2*c*m-(2*c-1)*m^2)
 
   #message(paste0("F1:",F1," , F2:",F2))
 
@@ -291,24 +291,27 @@ simulate <- function(type=c('beta','logitnormal','probitnormal'), args=c(1,1), n
   c(m=mean(pi), c=pROC::roc(Y~pi,)$auc)
 }
 
-simulate("logitnormal", res_logitnormal)
-simulate("probitnormal", res_probitnormal)
-simulate("beta", res_beta)
+# simulate("logitnormal", res_logitnormal)
+# simulate("probitnormal", res_probitnormal)
+# simulate("beta", res_beta)
 
 
 ####################
 
-out <- data.frame(m=double(), c=double(), type=character(), parm1=double(), parm2=double())
 
-ms <- (1:99)/100
-cs <- (55:95)/100
+populate_table <- function()
+{
+  out <- data.frame(m=double(), c=double(), type=character(), parm1=double(), parm2=double())
 
-N <- length(ms)*length(cs)*3
+  ms <- (1:99)/100
+  cs <- (55:95)/100
 
-out[N,1] <- 0
+  N <- length(ms)*length(cs)*3
 
-index <- 1
-for(m in ms)
+  out[N,1] <- 0
+
+  index <- 1
+  for(m in ms)
   for(c in cs)
   {
     cat(c(m,c),"|");
@@ -325,3 +328,4 @@ for(m in ms)
     out[index,] <- list(m,c,"beta",res[1],res[2])
     index <- index+1
   }
+}
