@@ -109,30 +109,33 @@ for(i_sim in 1:settings$n_DCA_bs)
 NBh_all <- colMeans(bs_NBh_all)
 NBh_model <- colMeans(bs_NBh_model)
 
-max_y <- max(0,NBh_all,NBh_model)
-min_y <- min(0,NBh_all,NBh_model)
 
 pdf(paste0(settings$output_dir,"DCA.pdf"), width=6, height=5)
-plot(zs, NBh_all, col='darkgray', type='l', lwd=2, ylim=c(0,max_y), xlab="Risk threshold (z)", ylab="Net benefit")
-lines(zs, zs*0, col='lightgray', type='l', lwd=2)
-lines(zs, NBh_model, col='blue4', type='l', lwd=2)
-# ci_model <- apply(bs_NBh_model,MARGIN = 2,FUN = quantile, c(0.025,0.975))
-# lines(zs,ci_model[1,], type='l', col='gray', lt=2)
-# lines(zs,ci_model[2,], type='l', col='gray', lt=2)
-# ci_all <- apply(bs_NBh_all,MARGIN = 2,FUN = quantile, c(0.025,0.975))
-# lines(zs,ci_all[1,], type='l', col='gray', lt=2)
-# lines(zs,ci_all[2,], type='l', col='gray', lt=2)
-legend(0.06,0.085, legend=c("Treat none", "Using the model", "Treat all"), lty=c(1,1,1),  col=c("lightgray","blue4","darkgray"), lwd=c(2,2))
-#legend(0.0,0.022, legend=c("Default strategies*","Using the model","95% confidence interval"), lty=c(1,1,2),  col=c("gray","blue4","gray"), lwd=c(2,2,1))
+  max_y <- max(0,NBh_all,NBh_model)
+  min_y <- 0*min(0,NBh_all,NBh_model)
+  par(mar=c(4, 4, 3, 0), xpd=TRUE)
+  plot(zs, NBh_all, col='darkgray', type='l', lwd=2, ylim=c(0,max_y), xlab="Risk threshold (z)", ylab="Net benefit")
+  lines(zs, zs*0, col='lightgray', type='l', lwd=2)
+  lines(zs, NBh_model, col='blue4', type='l', lwd=2)
+  # ci_model <- apply(bs_NBh_model,MARGIN = 2,FUN = quantile, c(0.025,0.975))
+  # lines(zs,ci_model[1,], type='l', col='gray', lt=2)
+  # lines(zs,ci_model[2,], type='l', col='gray', lt=2)
+  # ci_all <- apply(bs_NBh_all,MARGIN = 2,FUN = quantile, c(0.025,0.975))
+  # lines(zs,ci_all[1,], type='l', col='gray', lt=2)
+  # lines(zs,ci_all[2,], type='l', col='gray', lt=2)
+  #legend(0.0,1.2*max_y, legend=c("Treat none", "Use the model", "Treat all"), lty=c(1,1,1),  col=c("lightgray","blue4","darkgray"), lwd=c(2,2,2), horiz=T, bty="n")
+  #legend(0.0,0.022, legend=c("Default strategies*","Use the model","95% confidence interval"), lty=c(1,1,2),  col=c("gray","blue4","gray"), lwd=c(2,2,1))
 dev.off()
 
 
 pdf(paste0(settings$output_dir,"dNB.pdf"), width=6, height=5)
-plot(zs, NBh_model - pmax(NBh_all,0), col='blue4', type='l', lwd=2, ylim=c(min_y,max_y), xlab="Risk threshold (z)", ylab="Net benefit")
-ci <- apply(bs_NBh_model - pmax(bs_NBh_all,0),MARGIN = 2,FUN = quantile, c(0.025,0.975))
-lines(zs,ci[1,], type='l', col='gray', lt=2)
-lines(zs,ci[2,], type='l', col='gray', lt=2)
-legend(0.035,0.085, legend=c("Incremental NB of the model","95% confidence interval"), lty=c(1,1),  col=c("blue4","gray"), lwd=c(2,2))
+  par(mar=c(4, 4, 3, 0), xpd=TRUE)
+  ci <- apply(bs_NBh_model - pmax(bs_NBh_all,0),MARGIN = 2,FUN = quantile, c(0.025,0.975))
+  max_y <- max(ci[2,])
+  plot(zs, NBh_model - pmax(NBh_all,0), col='blue4', type='l', lwd=2, ylim=c(min_y,max_y), xlab="Risk threshold (z)", ylab="Net benefit")
+  lines(zs,ci[1,], type='l', col='gray', lt=2)
+  lines(zs,ci[2,], type='l', col='gray', lt=2)
+  #legend(0,1.5*max_y, legend=c("Incremental NB of the model","95% confidence interval"), lty=c(1,1),  col=c("blue4","gray"), lwd=c(2,2), bty="n", horiz=T)
 dev.off()
 
 
@@ -167,126 +170,65 @@ dev.off()
 
 
 #Scaled EVPI curve
-pdf(paste0(settings$output_dir,"scaled_EVPI.pdf"))
-par(mar=c(4, 4, 0, 3), xpd=TRUE)
-df <- EVPIs[which(EVPIs$val_size==settings$val_sample_size),]
-scale <- 1
-max_y <- df$EVPI/scale*1.1
-plot(zs, df$EVPI, type='l', xlab='Risk threshold (z)', ylab='EVPI', col='blue', lwd=2)
-#title(paste(df$val_size, z))
-y2 <- pretty(c(0,800000*df$EVPI))
-axis(4, at=y2/800000, labels=y2)
-mtext("Population EVPI", side=4, line=2)
+pdf(paste0(settings$output_dir,"scaled_EVPI.pdf"), width=8, height=5)
+  par(mar=c(4, 4, 0, 3), xpd=TRUE)
+  df <- EVPIs[which(EVPIs$val_size==settings$val_sample_size),]
+  scale <- 1
+  max_y <- df$EVPI/scale*1.1
+  plot(zs, df$EVPI, type='l', xlab='Risk threshold (z)', ylab='EVPI', col='blue4', lwd=2)
+  #title(paste(df$val_size, z))
+  y2 <- pretty(c(0,800000*df$EVPI))
+  axis(4, at=y2/800000, labels=y2)
+  mtext("Population EVPI", side=4, line=2)
 dev.off()
 
 
 
-### EVSI
-EVSIs <- NULL
-for(sample_size in settings$val_sample_size)
-{
-  for(z in settings$zs)
-  {
-    tmp <- val_data[1:sample_size,]
-    evidence <- list(prev=c(sum(tmp$Y), nrow(tmp)-sum(tmp$Y)),
-                     se=c(sum(tmp$Y*(tmp$pi>=z)),sum(tmp$Y)-sum(tmp$Y*(tmp$pi>=z))),
-                     sp=c(sum((1-tmp$Y)*(tmp$pi<z)),sum(1-tmp$Y)-sum((1-tmp$Y)*(tmp$pi<z)))
-    )
-    tmp <- EVSI_ag(evidence, z, settings$future_sample_sizes, n_sim=settings$n_sim)
-    EVSIs <- rbind(EVSIs, c(val_size=sample_size, z=z, EVPI=tmp$EVPI, EVSI=tmp$EVSI))
-  }
-}
-EVSIs <- as.data.frame(EVSIs)
-out$EVSIs <- EVSIs
-
-
-my_colors <- c('blue','red')
-evsi_cols <- which(substr(colnames(EVSIs),1,4)=="EVSI")
-for(z in settings$zs)
-{
-  i <- 1
-  for(sample_size in settings$val_sample_size)
-  {
-    pdf(paste0(settings$output_dir,"EVSI_",sample_size,"_",z,".pdf"), width=7, height=5)
-    df <- sqldf(paste("SELECT * FROM EVSIs WHERE z=",z," AND val_size=",sample_size))
-    max_y <- max(df$EVPI)
-    par(las=2)
-    plot(c(0,settings$future_sample_sizes), c(0,df[1,evsi_cols]), type='l', ylim=c(0,max_y), xlab="Future sample size", ylab="EVSI", col=my_colors[i], xaxt="n")
-    axis(1, at=settings$future_sample_sizes, labels=settings$future_sample_sizes)
-    #title(paste(df$val_size, z))
-    lines(c(0,max(settings$future_sample_sizes)), c(df[1,'EVPI'],df[1,'EVPI']), col='gray')
-    dev.off()
-    i <- i+1
-  }
-}
 
 
 
+#Scaled EVSI (V2 - combined)
+pdf(paste0(settings$output_dir,"scaled_EVSI.pdf"), width=8, height=5)
+  z <- 0.02
+  sample_size <- 500
+  df <- sqldf(paste("SELECT * FROM EVSIs WHERE z=",z," AND val_size=",sample_size))
+  evsi_cols <- which(substr(colnames(EVSIs),1,4)=="EVSI")
 
-#Scaled EVSI
-z <- 0.02
-sample_size <- 500
-df <- sqldf(paste("SELECT * FROM EVSIs WHERE z=",z," AND val_size=",sample_size))
-
-pdf(paste0(settings$output_dir,"scaled_EVSI_",sample_size,"_",z,".pdf"))
-
-scale <- 1 #df$EVPI
-max_y <- df$EVPI/scale*1.1
-par(mar=c(4, 4, 0, 3), xpd=TRUE)
-plot(c(0,settings$future_sample_sizes), c(0,unlist(df[1,evsi_cols]))/scale,
+  scale <- 1 #df$EVPI
+  max_y <- df$EVPI/scale*1.1
+  par(mar=c(4, 4, 3, 3), xpd=TRUE)
+  plot(c(0,settings$future_sample_sizes)[1:5], (c(0,unlist(df[1,evsi_cols]))/scale)[1:5],
      type='l', ylim=c(0,max_y),
      xlab="Future sample size",
-     ylab="EVSI", col='red', lwd=2)
-#title(paste(df$val_size, z))
-lines(c(0,max(settings$future_sample_sizes)), c(df$EVPI/scale,df$EVPI/scale), col='gray')
-y2 <- pretty(c(0,800000*df$EVPI))
-axis(4, at=y2/800000, labels=y2)
-mtext("Population EVSI", side=4, line=2)
+     ylab="EVSI", col='red3', lwd=2, xaxt="n")
+  axis(1, at=c(0,settings$future_sample_sizes), las=2)
+  #title(paste(df$val_size, z))
+  lines(c(0,max(settings$future_sample_sizes[1:4])), c(df$EVPI/scale,df$EVPI/scale), col='blue4')
+  y2 <- pretty(c(0,800000*df$EVPI))
+  axis(4, at=y2/800000, labels=y2)
+  mtext("Population EVSI", side=4, line=2)
 
-dev.off()
+  #legend(0, 1.25*max_y, legend=c("Threshold(z)", "0.01","0.02"), lwd=c(2,2), lty=c(1,2), col=c('white','blue','red'), bty="n", horiz=T)
 
+  z <- 0.01
+  sample_size <- 500
+  df <- sqldf(paste("SELECT * FROM EVSIs WHERE z=",z," AND val_size=",sample_size))
 
-z <- 0.01
-sample_size <- 500
-df <- sqldf(paste("SELECT * FROM EVSIs WHERE z=",z," AND val_size=",sample_size))
+  #pdf(paste0(settings$output_dir,"scaled_EVSI_",sample_size,"_",z,".pdf"))
 
-pdf(paste0(settings$output_dir,"scaled_EVSI_",sample_size,"_",z,".pdf"))
-
-options(scipen=999) #Prevent Y axis from going scientific
-scale <- 1 #df$EVPI
-max_y <- df$EVPI/scale*1.1
-par(mar=c(4, 4, 0, 3), xpd=TRUE)
-plot(c(0,settings$future_sample_sizes), c(0,unlist(df[1,evsi_cols]))/scale,
+  options(scipen=999) #Prevent Y axis from going scientific
+  scale <- 1 #df$EVPI
+  #max_y <- df$EVPI/scale*1.1
+  #par(mar=c(4, 4, 0, 3), xpd=TRUE)
+  lines(c(0,settings$future_sample_sizes)[1:5], (c(0,unlist(df[1,evsi_cols]))/scale)[1:5],
      type='l', ylim=c(0,max_y),
      xlab="Future sample size",
-     ylab="EVSI", col='red', lwd=2)
-#title(paste(df$val_size, z))
-lines(c(0,max(settings$future_sample_sizes)), c(df$EVPI/scale,df$EVPI/scale), col='gray')
-y2 <- pretty(c(0,800000*df$EVPI))
-axis(4, at=y2/800000, labels=y2)
-mtext("Population EVSI", side=4, line=2)
-
+     ylab="EVSI", col='red3', lwd=2, lty=2)
+  #title(paste(df$val_size, z))
+  lines(c(0,max(settings$future_sample_sizes[1:4])), c(df$EVPI/scale,df$EVPI/scale), col='blue4', lty=2)
 dev.off()
 
-options(scipen=0)
 
-
-my_colors <- c('blue','red')
-for(z in settings$zs)
-{
-  i <- 1
-  for(sample_size in settings$val_sample_size)
-  {
-    df <- sqldf(paste("SELECT * FROM EVSIs WHERE z=",z," AND val_size=",sample_size))
-    max_y <- max(df$EVPI)
-    pdf(paste0(settings$output_dir,"EVSI_",sample_size,"_",z,".pdf"), width=7, height=5)
-    plot(c(0,settings$future_sample_sizes), c(0,df[1,4:9]), type='l', ylim=c(0,max_y), xlab="Future sample size", ylab="EVSI", col=my_colors[i])
-    #title(paste(df$val_size, z))
-    lines(c(0,max(settings$future_sample_sizes)), c(df[1,'EVPI'],df[1,'EVPI']), col='gray')
-    dev.off()
-    i <- i+1
-  }
-}
 
 
 
@@ -316,3 +258,30 @@ out$entities <- entities
 
 saveRDS(out,paste0(settings$output_dir, "case_study.RDS"))
 print(paste("Results saved at", settings$output_dir))
+
+
+
+
+
+
+#####################Older versions
+
+
+options(scipen=0)
+my_colors <- c('blue','red')
+for(z in settings$zs)
+{
+  i <- 1
+  for(sample_size in settings$val_sample_size)
+  {
+    df <- sqldf(paste("SELECT * FROM EVSIs WHERE z=",z," AND val_size=",sample_size))
+    max_y <- max(df$EVPI)
+    #pdf(paste0(settings$output_dir,"EVSI_",sample_size,"_",z,".pdf"), width=7, height=5)
+    plot(c(0,settings$future_sample_sizes), c(0,df[1,4:9]), type='l', ylim=c(0,max_y), xlab="Future sample size", ylab="EVSI", col=my_colors[i])
+    #title(paste(df$val_size, z))
+    lines(c(0,max(settings$future_sample_sizes)), c(df[1,'EVPI'],df[1,'EVPI']), col='gray')
+    #dev.off()
+    i <- i+1
+  }
+}
+
