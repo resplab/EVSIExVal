@@ -1,6 +1,8 @@
 #include <Rcpp.h>
 using namespace Rcpp;
 
+#include <R.h>
+#include <Rinternals.h>
 
 
 //Principles: all preprocessing and checks etc are done by the R wrapper. Expects a numeric matrix with first three columsn being prev, se, sp.
@@ -10,7 +12,7 @@ using namespace Rcpp;
    int nSamples=samples.nrow();
    int nNStars=futureSampleSizes.length();
    int nStars[nNStars]; //Will copy futureSampleSizes for faster operations
-   double data[nSamples][13]; //(double *)malloc(nSamples*(3+6+3+1)*sizeof(double)); //3 original draws, 6 log(theta) and log(1-theta), 3 NBs, and 1 W
+   auto data = new double [nSamples][13];//=(double *)malloc(nSamples*(3+6+3+1)*sizeof(double)); //3 original draws, 6 log(theta) and log(1-theta), 3 NBs, and 1 W
    long double lw[nSamples];
    double ENBs[3]={0,0,0};
    double EVPI=0;
@@ -22,23 +24,23 @@ using namespace Rcpp;
 
    for(int i=0;i<nSamples;i++)
    {
-     if(i==floor(i/progressTicker)*progressTicker) Rcout << ".";
-     data[i][0]=samples(i,0); //prev
-     data[i][1]=samples(i,1); //sp
-     data[i][2]=samples(i,2); //sp
+     // if(i==floor(i/progressTicker)*progressTicker) Rcout << "."; crashes!!!
+      data[i][0]=(double)samples(i,0); //prev
+      data[i][1]=(double)samples(i,1); //sp
+      data[i][2]=(double)samples(i,2); //sp
 
-     data[i][3]=std::log(data[i][0]);
-     data[i][4]=std::log(1-data[i][0]);
-     data[i][5]=std::log(data[i][1]);
-     data[i][6]=std::log(1-data[i][1]);
-     data[i][7]=std::log(data[i][2]);
-     data[i][8]=std::log(1-data[i][2]);
+      data[i][3]=(double)std::log(data[i][0]);
+      data[i][4]=(double)std::log(1-data[i][0]);
+      data[i][5]=(double)std::log(data[i][1]);
+      data[i][6]=(double)std::log(1-data[i][1]);
+      data[i][7]=(double)std::log(data[i][2]);
+      data[i][8]=(double)std::log(1-data[i][2]);
 
-     data[i][9]=0;
-     data[i][10]=data[i][0]*data[i][1]-(1-data[i][0])*(1-data[i][2])*z/(1-z);
-     data[i][11]=data[i][0]-(1-data[i][0])*z/(1-z);
+      data[i][9]=(double)0;
+      data[i][10]=(double)data[i][0]*data[i][1]-(1-data[i][0])*(1-data[i][2])*z/(1-z);
+      data[i][11]=(double)data[i][0]-(1-data[i][0])*z/(1-z);
 
-     data[i][12]=0;  //Will be the log(weight)
+      data[i][12]=0;  //Will be the log(weight)
    }
 
    for(int i=0;i<nNStars;i++)
@@ -105,7 +107,6 @@ using namespace Rcpp;
          }
          else
            if(NBall>0) winner=2;
-
              EVSI[iStar]+=trueNBs[winner];
        } //iStar
      } //iSim
@@ -126,6 +127,8 @@ using namespace Rcpp;
    NumericVector tmp(nNStars);
    for(int i=0;i<nNStars;i++) tmp(i)=EVSI[i];
    out["EVSI"]=tmp;
+
+   delete[] data;
 
    return out;
  }
