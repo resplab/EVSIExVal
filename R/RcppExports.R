@@ -5,7 +5,3 @@ CEVSI <- function(samples, z, futureSampleSizes, nSim, debug = FALSE) {
     .Call(`_evsiexval_CEVSI`, samples, z, futureSampleSizes, nSim, debug)
 }
 
-CEVSI <- function(samples, z, futureSampleSizes, nSim, debug = FALSE) {
-    .Call(`_evsiexval_CEVSI`, samples, z, futureSampleSizes, nSim, debug)
-}
-

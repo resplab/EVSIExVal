@@ -282,7 +282,11 @@ EVSI_ag <- function(evidence=list(prev=c(1,1), se=c(1,1), sp=c(1,1)), z, future_
       pb$tick()
     }
   }
-  else EVSI=NULL
+  else
+  {
+    EVSI <- NULL
+    EVSIp <- NULL
+  }
 
   out$EVPI <- EVPI
   out$EVSI <- EVSI
