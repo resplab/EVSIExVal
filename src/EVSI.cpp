@@ -17,6 +17,7 @@ using namespace Rcpp;
    double ENBs[3]={0,0,0};
    double EVPI=0;
    double EVSI[nNStars];
+   double EVSIp[nNStars];
 
    List out=List::create();
 
@@ -24,7 +25,7 @@ using namespace Rcpp;
 
    for(int i=0;i<nSamples;i++)
    {
-     // if(i==floor(i/progressTicker)*progressTicker) Rcout << "."; crashes!!!
+      /*if(i==floor(i/progressTicker)*progressTicker) Rcpp::Rcout << "Salam" << std::endl;*/
       data[i][0]=(double)samples(i,0); //prev
       data[i][1]=(double)samples(i,1); //sp
       data[i][2]=(double)samples(i,2); //sp
@@ -48,7 +49,7 @@ using namespace Rcpp;
      nStars[i]=futureSampleSizes(i);
    }
 
-   for(int iStar=0;iStar<nNStars;iStar++)  EVSI[iStar]=0;
+   for(int iStar=0;iStar<nNStars;iStar++)  {EVSI[iStar]=0; EVSIp[iStar]=0;}
 
    for(int iSample=0;iSample<nSamples;iSample++) //this is the truth!
    {
@@ -57,7 +58,8 @@ using namespace Rcpp;
      double trueSe=data[iSample][1];
      double trueSp=data[iSample][2];
 
-     EVPI+=std::max(trueNBs[0],std::max(trueNBs[1],trueNBs[2]));
+     double maxNB=std::max(trueNBs[0],std::max(trueNBs[1],trueNBs[2]));
+     EVPI+=maxNB;
      ENBs[0]+=trueNBs[0];
      ENBs[1]+=trueNBs[1];
      ENBs[2]+=trueNBs[2];
@@ -107,7 +109,10 @@ using namespace Rcpp;
          }
          else
            if(NBall>0) winner=2;
-             EVSI[iStar]+=trueNBs[winner];
+
+        EVSI[iStar]+=trueNBs[winner];
+        EVSIp[iStar]+=(trueNBs[winner]==maxNB)*1;
+
        } //iStar
      } //iSim
    }//iSample
@@ -115,6 +120,7 @@ using namespace Rcpp;
    double EVCI=std::max(ENBs[0],std::max(ENBs[1],ENBs[2]))/nSamples;
    EVPI=EVPI/nSamples-EVCI;
    for(int iStar=0;iStar<nNStars;iStar++)  EVSI[iStar]=EVSI[iStar]/(nSim*nSamples)-EVCI;
+   for(int iStar=0;iStar<nNStars;iStar++)  EVSIp[iStar]=EVSIp[iStar]/(nSim*nSamples);
 
    if(debug)
    {
@@ -124,10 +130,11 @@ using namespace Rcpp;
    }
 
    out["EVPI"]=EVPI;
-   NumericVector tmp(nNStars);
-   for(int i=0;i<nNStars;i++) tmp(i)=EVSI[i];
-   out["EVSI"]=tmp;
-
+   NumericVector tmp1(nNStars), tmp2(nNStars);;
+   for(int i=0;i<nNStars;i++) tmp1(i)=EVSI[i];
+   out["EVSI"]=tmp1;
+   for(int i=0;i<nNStars;i++) tmp2(i)=EVSIp[i];
+   out["EVSIp"]=tmp2;
    delete[] data;
 
    return out;

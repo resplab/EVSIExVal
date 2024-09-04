@@ -189,8 +189,10 @@ EVSI <- function(model, val_data, z, future_sample_sizes, n_sim=10^6, prior=list
 
 
 ##' @export
-EVSI_ag <- function(evidence=list(prev=c(1,1), se=c(1,1), sp=c(1,1)), z, future_sample_sizes, n_sim=10^6, prior=list(prev=c(1,1), se=c(1,1), sp=c(1,1)))
+EVSI_ag <- function(evidence=list(prev=c(1,1), se=c(1,1), sp=c(1,1)), z, future_sample_sizes, n_sim=10^6, prior=list(prev=c(1,1), se=c(1,1), sp=c(1,1)), do_EVSIp=TRUE, do_summary=TRUE, progress=TRUE)
 {
+  out <- list()
+
   n <-0
 
   data <- evidence
@@ -215,21 +217,29 @@ EVSI_ag <- function(evidence=list(prev=c(1,1), se=c(1,1), sp=c(1,1)), z, future_
   )
 
   #For output
-  summary <- cur_NBs
-  summary <- rbind(summary, apply(true_NBs, 2, quantile, c(0.025,0.975)))
-  summary <- rbind(summary, c(0,0,0))
-  p_best <- table(apply(true_NBs,1,which.max))/nrow(true_NBs)
-  summary[4, as.numeric(colnames(t(as.matrix(p_best))))] <- p_best
-  rownames(summary) <- c("Expected NB", "95% CI L", "95% CI H", "P_best")
+  if(do_summary)
+  {
+    summary <- cur_NBs
+    summary <- rbind(summary, apply(true_NBs, 2, quantile, c(0.025,0.975)))
+    summary <- rbind(summary, c(0,0,0))
+    p_best <- table(apply(true_NBs,1,which.max))/nrow(true_NBs)
+    summary[4, as.numeric(colnames(t(as.matrix(p_best))))] <- p_best
+    rownames(summary) <- c("Expected NB", "95% CI L", "95% CI H", "P_best")
+
+    out$summary <- summary
+  }
 
   EVPI <- mean(apply(true_NBs,1,max)) - max(cur_NBs)
 
   if(length(future_sample_sizes)>0)
   {
-    EVSI <- SE <- future_sample_sizes*NA
+    EVSI <- SE <- EVSIp <- future_sample_sizes*NA
 
-    require(progress)
-    pb <- progress_bar$new(total=length(future_sample_sizes))
+    if(progress)
+    {
+      require(progress)
+      pb <- progress_bar$new(total=length(future_sample_sizes))
+    }
 
     for(i in 1:length(future_sample_sizes))
     {
@@ -263,13 +273,28 @@ EVSI_ag <- function(evidence=list(prev=c(1,1), se=c(1,1), sp=c(1,1)), z, future_
 
       EVSI[i] <-  mean(winning_NBs) - max(cur_NBs)
 
+      if(do_EVSIp)
+      {
+        true_winners <- apply(true_NBs, 1, which.max)
+        EVSIp[i] <- sum(winners==true_winners)/n_sim
+      }
+
       pb$tick()
     }
   }
   else EVSI=NULL
 
-  list(summary=summary, EVPI=EVPI, EVSI=EVSI)
+  out$EVPI <- EVPI
+  out$EVSI <- EVSI
+
+  if(do_EVSIp)
+  {
+    out$EVSIp <- EVSIp
+  }
+
+  out
 }
+
 
 
 ##' @export
@@ -354,6 +379,8 @@ EVSI_g <- function(samples=data.frame(prev=rbeta(100,1,1), se=rbeta(100,1,1), sp
 
   list(summary=summary, EVPI=EVPI, EVSI=EVSI)
 }
+
+
 
 ##' @export
 EVSI_gf <- function(samples=data.frame(prev=rbeta(100,1,1), se=rbeta(100,1,1), sp=rbeta(100,1,1)), z, future_sample_sizes, n_sim=10^3)
