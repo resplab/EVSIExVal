@@ -387,9 +387,9 @@ EVSI_g <- function(samples=data.frame(prev=rbeta(100,1,1), se=rbeta(100,1,1), sp
 
 
 ##' @export
-EVSI_gf <- function(samples=data.frame(prev=rbeta(100,1,1), se=rbeta(100,1,1), sp=rbeta(100,1,1)), z, future_sample_sizes, n_sim=10^3)
+EVSI_gf <- function(samples=data.frame(prev=rbeta(100,1,1), se=rbeta(100,1,1), sp=rbeta(100,1,1)), z, future_sample_sizes, ignore_prior=FALSE, n_sim=10^3)
 {
-  CEVSI(as.matrix(samples[,1:3]), z, future_sample_sizes, n_sim , F)
+  CEVSI(as.matrix(samples[,1:3]), z, future_sample_sizes, n_sim, ignore_prior=ignore_prior, FALSE)
 }
 
 

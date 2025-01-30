@@ -7,8 +7,8 @@ using namespace Rcpp;
 
 //Principles: all preprocessing and checks etc are done by the R wrapper. Expects a numeric matrix with first three columsn being prev, se, sp.
  // [[Rcpp::export]]
- List CEVSI(NumericMatrix samples, double z, NumericVector futureSampleSizes, int nSim, bool debug=false)
- {
+List CEVSI(NumericMatrix samples, double z, NumericVector futureSampleSizes, int nSim, bool ignore_prior=false, bool debug=false)
+{
    int nSamples=samples.nrow();
    int nNStars=futureSampleSizes.length();
    int nStars[nNStars]; //Will copy futureSampleSizes for faster operations
@@ -75,32 +75,40 @@ using namespace Rcpp;
          int nTP=R::rbinom(nD,trueSe);
          int nTN=R::rbinom(n-nD,trueSp);
 
-         //2. Weigh them against sample and calculate log weights
-         long double minLw, maxLw;
-         for(int jSample=0;jSample<nSamples;jSample++)
-         {
-           long double _lw=(long double)nD*data[jSample][3]+(n-nD)*data[jSample][4]+
-             (long double)nTP*data[jSample][5]+(nD-nTP)*data[jSample][6]+
-             (long double)nTN*data[jSample][7]+(n-nD-nTN)*data[jSample][8];
-           if(jSample==0)
-           {
-             minLw=_lw; maxLw=_lw;
-           }
-           else
-           {
-             minLw=std::min(_lw,minLw); maxLw=std::max(_lw,maxLw);
-           }
-           lw[jSample]=_lw;
-         }//jSample
-
-         //3. Back transform weights and do the weighted averaging of NBs
          long double NBmodel=0, NBall=0;
-         for(int jSample=0;jSample<nSamples;jSample++)
+         if(ignore_prior)
          {
-           long double _w=std::exp2l(lw[jSample]);
-           //Rprintf("%f\n",w);
-           NBmodel=NBmodel+_w*(long double)data[jSample][10];
-           NBall=NBall+_w*(long double)data[jSample][11];
+           NBmodel=(long double)nTP/n-(long double)(n-nD-nTN)/n*z/(1-z);
+           NBall=(long double)nD/n-(long double)(n-nD)/n*z/(1-z);
+         }
+         else
+         {
+           //2. Weigh them against sample and calculate log weights
+           long double minLw, maxLw;
+           for(int jSample=0;jSample<nSamples;jSample++)
+           {
+             long double _lw=(long double)nD*data[jSample][3]+(n-nD)*data[jSample][4]+
+               (long double)nTP*data[jSample][5]+(nD-nTP)*data[jSample][6]+
+               (long double)nTN*data[jSample][7]+(n-nD-nTN)*data[jSample][8];
+             if(jSample==0)
+             {
+               minLw=_lw; maxLw=_lw;
+             }
+             else
+             {
+               minLw=std::min(_lw,minLw); maxLw=std::max(_lw,maxLw);
+             }
+             lw[jSample]=_lw;
+           }//jSample
+
+           //3. Back transform weights and do the weighted averaging of NBs
+           for(int jSample=0;jSample<nSamples;jSample++)
+           {
+             long double _w=std::exp2l(lw[jSample]);
+             //Rprintf("%f\n",w);
+             NBmodel=NBmodel+_w*(long double)data[jSample][10];
+             NBall=NBall+_w*(long double)data[jSample][11];
+           }
          }
          int winner=0;
          if(NBmodel>0)
@@ -138,7 +146,7 @@ using namespace Rcpp;
    delete[] data;
 
    return out;
- }
+}
 
 
 

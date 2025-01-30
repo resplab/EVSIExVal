@@ -11,8 +11,8 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // CEVSI
-List CEVSI(NumericMatrix samples, double z, NumericVector futureSampleSizes, int nSim, bool debug);
-RcppExport SEXP _evsiexval_CEVSI(SEXP samplesSEXP, SEXP zSEXP, SEXP futureSampleSizesSEXP, SEXP nSimSEXP, SEXP debugSEXP) {
+List CEVSI(NumericMatrix samples, double z, NumericVector futureSampleSizes, int nSim, bool ignore_prior, bool debug);
+RcppExport SEXP _evsiexval_CEVSI(SEXP samplesSEXP, SEXP zSEXP, SEXP futureSampleSizesSEXP, SEXP nSimSEXP, SEXP ignore_priorSEXP, SEXP debugSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -20,14 +20,15 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< double >::type z(zSEXP);
     Rcpp::traits::input_parameter< NumericVector >::type futureSampleSizes(futureSampleSizesSEXP);
     Rcpp::traits::input_parameter< int >::type nSim(nSimSEXP);
+    Rcpp::traits::input_parameter< bool >::type ignore_prior(ignore_priorSEXP);
     Rcpp::traits::input_parameter< bool >::type debug(debugSEXP);
-    rcpp_result_gen = Rcpp::wrap(CEVSI(samples, z, futureSampleSizes, nSim, debug));
+    rcpp_result_gen = Rcpp::wrap(CEVSI(samples, z, futureSampleSizes, nSim, ignore_prior, debug));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_evsiexval_CEVSI", (DL_FUNC) &_evsiexval_CEVSI, 5},
+    {"_evsiexval_CEVSI", (DL_FUNC) &_evsiexval_CEVSI, 6},
     {NULL, NULL, 0}
 };
 
